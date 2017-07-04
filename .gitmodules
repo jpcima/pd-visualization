@@ -1,0 +1,3 @@
+[submodule "thirdparty/color"]
+	path = thirdparty/color
+	url = https://github.com/dmilos/color.git

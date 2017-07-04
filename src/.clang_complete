@@ -1,0 +1,5 @@
+-DPD
+-DFLEXT_SYS=2
+-DFLEXT_SHARED
+-I.
+-I../thirdparty/color/src
