@@ -69,7 +69,7 @@ W_DftSpectrogram::~W_DftSpectrogram() {
 }
 
 void W_DftSpectrogram::update_data(
-    const std::complex<float> *spec, unsigned n, float fs, bool redraw) {
+    const std::complex<float> *spec, unsigned n, float fs) {
   float nyq = fs/2;
   float dbmin = P->dbmin;
   float dbmax = P->dbmax;
@@ -93,9 +93,12 @@ void W_DftSpectrogram::update_data(
 
     dispvalues[i] = dv;
   }
+}
 
-  if (redraw)
-    this->redraw();
+void W_DftSpectrogram::reset_data() {
+  int dw;
+  P->screen_dims(nullptr, nullptr, &dw, nullptr);
+  memset(P->dispvalues.get(), 0, dw * sizeof(P->dispvalues[0]));
 }
 
 void W_DftSpectrogram::draw() {

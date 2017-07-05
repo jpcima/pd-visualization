@@ -9,6 +9,6 @@ class W_DftVisu : public Fl_Group {
   virtual ~W_DftVisu() {}
 
   virtual void update_data(
-      const std::complex<float> *spec, unsigned n, float fs,
-      bool redraw = true) = 0;
+      const std::complex<float> *spec, unsigned n, float fs) = 0;
+  virtual void reset_data() = 0;
 };

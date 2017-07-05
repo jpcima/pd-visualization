@@ -8,8 +8,8 @@ class W_DftSpectrogram : public W_DftVisu {
   ~W_DftSpectrogram();
 
   void update_data(
-      const std::complex<float> *spec, unsigned n, float fs,
-      bool redraw = true) override;
+      const std::complex<float> *spec, unsigned n, float fs) override;
+  void reset_data() override;
 
   void draw() override;
   int handle(int event) override;

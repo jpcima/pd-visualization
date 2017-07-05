@@ -73,14 +73,14 @@ W_DftWaterfall::W_DftWaterfall(int x, int y, int w, int h)
 
   P->pixsize = 4;
   P->stride = dw * P->pixsize;
-  P->imagebuf.reset(new uint8_t[h*2*P->stride]());
+  P->imagebuf.reset(new uint8_t[dh*2*P->stride]());
 }
 
 W_DftWaterfall::~W_DftWaterfall() {
 }
 
 void W_DftWaterfall::update_data(
-    const std::complex<float> *spec, unsigned n, float fs, bool redraw) {
+    const std::complex<float> *spec, unsigned n, float fs) {
   float nyq = fs/2;
   float dbmin = P->dbmin;
   float dbmax = P->dbmax;
@@ -119,9 +119,12 @@ void W_DftWaterfall::update_data(
     pix[3] = 0;
   }
   memcpy(P->current_btm_row(true), row, P->stride);
+}
 
-  if (redraw)
-    this->redraw();
+void W_DftWaterfall::reset_data() {
+  int h;
+  P->screen_dims(nullptr, nullptr, nullptr, &h);
+  memset(P->imagebuf.get(), 0, h*2*P->stride);
 }
 
 void W_DftWaterfall::draw() {

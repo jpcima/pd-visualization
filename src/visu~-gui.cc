@@ -54,6 +54,10 @@ std::unique_ptr<float[]> smem(new float[smemsize]());
 
 }  // namespace
 
+static void on_update_timeout(void *);
+static void on_fftdraw_timeout(void *);
+
+///
 static MessageHeader *receive_from_fd(SOCKET rfd) {
   uint8_t *recvbuf = ::recvbuf.get();
   MessageHeader *msg = (MessageHeader *)recvbuf;
@@ -74,10 +78,16 @@ static bool handle_message(const MessageHeader *msg) {
       samplerate = msg->f[0]; break;
 
     case MessageTag_Toggle:
-      if (window->shown())
+      if (window->shown()) {
+        Fl::remove_timeout(&on_update_timeout);
+        Fl::remove_timeout(&on_fftdraw_timeout);
+        ::dftvisu->reset_data();
         window->hide();
-      else
+      } else {
+        Fl::add_timeout(update_interval, &on_update_timeout);
+        Fl::add_timeout(fftdraw_interval, &on_fftdraw_timeout);
         window->show();
+      }
       break;
 
     case MessageTag_Samples: {
@@ -147,10 +157,10 @@ static void on_update_timeout(void *) {
     fftout[i] /= fftsize;
 
   W_DftVisu *dftvisu = ::dftvisu;
-  dftvisu->update_data(fftout, fftsize/2+1, samplerate, false);
+  dftvisu->update_data(fftout, fftsize/2+1, samplerate);
   fftcandraw = true;
 
-  Fl::add_timeout(update_interval, &on_update_timeout);
+  Fl::repeat_timeout(update_interval, &on_update_timeout);
 }
 
 static void on_fftdraw_timeout(void *) {
@@ -158,7 +168,8 @@ static void on_fftdraw_timeout(void *) {
     dftvisu->redraw();
     fftcandraw = false;
   }
-  Fl::add_timeout(fftdraw_interval, &on_fftdraw_timeout);
+
+  Fl::repeat_timeout(fftdraw_interval, &on_fftdraw_timeout);
 }
 
 static bool handle_cmdline(int argc, char *argv[]) {
