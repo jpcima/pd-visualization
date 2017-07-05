@@ -6,7 +6,11 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Double_Window.H>
-#include <fftw3.h>
+#ifdef USE_FFTW
+# include <fftw3.h>
+#else
+# include <kfr/dft.hpp>
+#endif
 #include <getopt.h>
 #include <string>
 #include <memory>
@@ -42,8 +46,13 @@ constexpr double update_interval = 10e-3;
 constexpr double fftdraw_interval = 1 / 30.0;
 
 constexpr unsigned fftsize = 2 * 1024;
+#ifdef USE_FFTW
 std::unique_ptr<fftwf_plan_s, void(*)(fftwf_plan)> fftplan{
   nullptr, &fftwf_destroy_plan};
+#else
+std::unique_ptr<kfr::dft_plan_real<float>> fftplan;
+std::unique_ptr<kfr::u8[]> ffttemp;
+#endif
 std::unique_ptr<float []> fftin;
 std::unique_ptr<std::complex<float> []> fftout;
 bool fftcandraw = false;
@@ -151,7 +160,11 @@ static void on_update_timeout(void *) {
     float w = window_nutall(i / float(fftsize-1));
     fftin[fftsize-1-i] = w * smem[(smemindex-i) % smemsize];
   }
+#ifdef USE_FFTW
   fftwf_execute(fftplan.get());
+#else
+  fftplan->execute((kfr::complex<float> *)fftout, fftin, ffttemp.get());
+#endif
 
   for (unsigned i = 0; i < fftsize/2+1; ++i)
     fftout[i] /= fftsize;
@@ -244,8 +257,13 @@ int main(int argc, char *argv[]) {
 
   fftin.reset(new float[fftsize]());
   fftout.reset(new std::complex<float>[fftsize/2+1]());
+#ifdef USE_FFTW
   fftplan.reset(fftwf_plan_dft_r2c_1d(
       fftsize, fftin.get(), (fftwf_complex *)fftout.get(), FFTW_MEASURE));
+#else
+  fftplan.reset(new kfr::dft_plan_real<float>(fftsize));
+  ffttemp.reset(new kfr::u8[fftplan->temp_size]());
+#endif
 
   Fl::visual(FL_RGB);
 

@@ -15,5 +15,7 @@ all_cflags = -std=gnu++14 -fvisibility=hidden -D__STDC_FORMAT_MACROS=1 \
 
 fltk_cflags =
 fltk_ldlibs = -lfltk
-fftwf_cflags = $(shell $(PKG_CONFIG) fftw3f --cflags)
-fftwf_ldlibs = $(shell $(PKG_CONFIG) fftw3f --libs)
+# fft_cflags = $(shell $(PKG_CONFIG) fftw3f --cflags) -DUSE_FFTW=1
+# fft_ldlibs = $(shell $(PKG_CONFIG) fftw3f --libs)
+fft_cflags = -Ithirdparty/kfr/include
+fft_ldlibs =
