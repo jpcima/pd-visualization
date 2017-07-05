@@ -27,6 +27,7 @@ HANDLE hparentprocess = nullptr;
 #else
 pid_t arg_ppid = -1;
 #endif
+VisuType arg_visu = Visu_Default;
 std::string arg_title;
 
 std::unique_ptr<uint8_t[]> recvbuf(new uint8_t[msgmax]);
@@ -160,6 +161,7 @@ static bool handle_cmdline(int argc, char *argv[]) {
   const struct option opts[] = {
     {"fd", required_argument, nullptr, 256 + 'f'},
     {"ppid", required_argument, nullptr, 256 + 'p'},
+    {"visu", required_argument, nullptr, 256 + 'v'},
     {"title", required_argument, nullptr, 256 + 't'},
     {},
   };
@@ -167,7 +169,7 @@ static bool handle_cmdline(int argc, char *argv[]) {
   for (int c; (c = getopt_long(argc, argv, "", opts, nullptr)) != -1;) {
     switch (c) {
       case 256 + 'f': {
-        unsigned len;
+        unsigned len = 0;
         if (sscanf(optarg, "%" SCNdSOCKET "%n", &::arg_fd, &len) != 1 ||
             len != strlen(optarg))
           return false;
@@ -182,6 +184,14 @@ static bool handle_cmdline(int argc, char *argv[]) {
 #endif
         if (count != 1 || len != strlen(optarg))
           return false;
+        break;
+      }
+      case 256 + 'v': {
+        unsigned len = 0;
+        int v = 0;
+        if (sscanf(optarg, "%d%n", &v, &len) != 1 || len != strlen(optarg))
+          return false;
+        ::arg_visu = (VisuType)v;
         break;
       }
       case 256 + 't': {
@@ -224,9 +234,19 @@ int main(int argc, char *argv[]) {
 
   Fl::visual(FL_RGB);
 
-  Fl_Double_Window *window = new Fl_Double_Window(1000, 400, ::arg_title.c_str());
+  Fl_Double_Window *window = new Fl_Double_Window(1, 1, ::arg_title.c_str());
   ::window = window;
-  ::dftvisu = new W_DftWaterfall(0, 0, window->w(), window->h());
+
+  switch (::arg_visu) {
+    case Visu_Waterfall: {
+      window->resize(window->x(), window->y(), 1000, 400);
+      ::dftvisu = new W_DftWaterfall(0, 0, window->w(), window->h());
+      break;
+    }
+    default:
+      return 1;
+  }
+
   window->end();
 
   window->show();

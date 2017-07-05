@@ -8,7 +8,8 @@ t_visu::t_visu() {
 t_visu::~t_visu() {
 }
 
-void visu_init(t_visu *x) {
+void visu_init(t_visu *x, VisuType t) {
+  x->x_visutype = t;
   x->x_remote.reset(new RemoteVisu);
 }
 
@@ -25,7 +26,7 @@ void visu_bang(t_visu *x) {
     remote.toggle_visibility();
   } else {
     std::string pgm = self_relative("visu~-gui");
-    remote.start(pgm.c_str(), x->x_title.c_str());
+    remote.start(pgm.c_str(), x->x_visutype, x->x_title.c_str());
   }
 }
 

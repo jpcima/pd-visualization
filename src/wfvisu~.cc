@@ -43,7 +43,7 @@ void *wfvisu_new(t_symbol *s, int argc, t_atom *argv) {
   try {
     if (!wfvisu_opts(x, argc, argv))
       return nullptr;
-    visu_init(x);
+    visu_init(x, Visu_Waterfall);
   } catch (std::exception &ex) {
     error("%s", ex.what());
     return nullptr;

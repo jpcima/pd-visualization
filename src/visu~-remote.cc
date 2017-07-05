@@ -67,7 +67,7 @@ bool RemoteVisu::is_running() const {
   return true;
 }
 
-void RemoteVisu::start(const char *pgm, const char *title) {
+void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   if (is_running())
     return;
 
@@ -95,12 +95,16 @@ void RemoteVisu::start(const char *pgm, const char *title) {
   char rfd_str[16];
   sprintf(rfd_str, "%" PRIdSOCKET, rfd);
 
-  char ppid_str[16];
 #ifdef _WIN32
+  char ppid_str[24];
   sprintf(ppid_str, "%lu", GetCurrentProcessId());
 #else
+  char ppid_str[16];
   sprintf(ppid_str, "%d", getpid());
 #endif
+
+  char visu_str[16];
+  sprintf(visu_str, "%d", (int)type);
 
   char *ps_argv[16];
   unsigned ps_argc = 0;
@@ -109,6 +113,8 @@ void RemoteVisu::start(const char *pgm, const char *title) {
   ps_argv[ps_argc++] = rfd_str;
   ps_argv[ps_argc++] = (char *)"--ppid";
   ps_argv[ps_argc++] = ppid_str;
+  ps_argv[ps_argc++] = (char *)"--visu";
+  ps_argv[ps_argc++] = visu_str;
   if (title) {
     ps_argv[ps_argc++] = (char *)"--title";
     ps_argv[ps_argc++] = (char *)title;

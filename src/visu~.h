@@ -13,12 +13,13 @@ struct t_visu {
   ~t_visu();
   t_object x_obj;
   float x_signalin = 0;
+  VisuType x_visutype = Visu_Default;
   std::string x_title;
   std::unique_ptr<RemoteVisu> x_remote;
   void (*x_cleanup)(t_visu *) = nullptr;
 };
 
-void visu_init(t_visu *x);
+void visu_init(t_visu *x, VisuType t);
 void visu_free(t_visu *x);
 void visu_bang(t_visu *x);
 void visu_dsp(t_visu *x, t_signal **sp);

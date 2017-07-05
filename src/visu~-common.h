@@ -23,6 +23,11 @@ struct MessageHeader {
   };
 };
 
+enum VisuType {
+  Visu_Waterfall,
+  Visu_Default = Visu_Waterfall,
+};
+
 #define PD_LAYOUT_CHECK(t)                                           \
   static_assert(std::is_standard_layout<t>() && !offsetof(t, x_obj), \
                 "object layout check failed");
