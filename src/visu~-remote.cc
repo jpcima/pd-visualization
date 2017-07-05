@@ -23,7 +23,7 @@ extern "C" {
   extern char **environ;
 }
 
-struct RemoveVisu::Impl {
+struct RemoteVisu::Impl {
 #ifdef _WIN32
   HANDLE hprocess = nullptr;
 #else
@@ -34,18 +34,18 @@ struct RemoveVisu::Impl {
   bool send_message(const MessageHeader *m);
 };
 
-RemoveVisu::RemoveVisu()
+RemoteVisu::RemoteVisu()
     : P(new Impl) {
   P->msg.reset((MessageHeader *)malloc(msgmax));
   if (!P->msg)
     throw std::bad_alloc();
 }
 
-RemoveVisu::~RemoveVisu() {
+RemoteVisu::~RemoteVisu() {
   stop();
 }
 
-bool RemoveVisu::is_running() const {
+bool RemoteVisu::is_running() const {
 #ifdef _WIN32
   HANDLE hprocess = P->hprocess;
   if (!hprocess)
@@ -67,7 +67,7 @@ bool RemoveVisu::is_running() const {
   return true;
 }
 
-void RemoveVisu::start(const char *pgm, const char *title) {
+void RemoteVisu::start(const char *pgm, const char *title) {
   if (is_running())
     return;
 
@@ -185,7 +185,7 @@ void RemoveVisu::start(const char *pgm, const char *title) {
   P->sock = std::move(sockpair[1]);
 }
 
-void RemoveVisu::stop() {
+void RemoteVisu::stop() {
 #ifdef _WIN32
   HANDLE hprocess = P->hprocess;
   if (!hprocess)
@@ -204,14 +204,14 @@ void RemoveVisu::stop() {
 #endif
 }
 
-bool RemoveVisu::toggle_visibility() {
+bool RemoteVisu::toggle_visibility() {
   MessageHeader *msg = P->msg.get();
   msg->tag = MessageTag_Toggle;
   msg->len = 0;
   return P->send_message(msg);
 }
 
-bool RemoveVisu::send_samples(float fs, const float *smp, unsigned n) {
+bool RemoteVisu::send_samples(float fs, const float *smp, unsigned n) {
   MessageHeader *msg = P->msg.get();
   msg->tag = MessageTag_SampleRate;
   msg->len = sizeof(float);
@@ -236,7 +236,7 @@ bool RemoveVisu::send_samples(float fs, const float *smp, unsigned n) {
   return true;
 }
 
-bool RemoveVisu::Impl::send_message(const MessageHeader *m) {
+bool RemoteVisu::Impl::send_message(const MessageHeader *m) {
   SOCKET wfd = this->sock.get();
   if (wfd == INVALID_SOCKET)
     return -1;

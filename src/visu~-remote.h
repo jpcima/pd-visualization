@@ -1,10 +1,10 @@
 #pragma once
 #include <memory>
 
-class RemoveVisu {
+class RemoteVisu {
  public:
-  RemoveVisu();
-  ~RemoveVisu();
+  RemoteVisu();
+  ~RemoteVisu();
 
   bool is_running() const;
 

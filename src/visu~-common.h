@@ -1,4 +1,6 @@
 #pragma once
+#include <type_traits>
+#include <stddef.h>
 #include <stdint.h>
 
 static constexpr unsigned msgmax = 512;
@@ -20,3 +22,8 @@ struct MessageHeader {
     float f[0];
   };
 };
+
+#define PD_LAYOUT_CHECK(t)                                           \
+  static_assert(std::is_standard_layout<t>() && !offsetof(t, x_obj), \
+                "object layout check failed");
+

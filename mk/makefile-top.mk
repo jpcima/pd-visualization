@@ -7,7 +7,7 @@ PKG_CONFIG ?= pkg-config
 
 lib.name = visu~
 class.sources = src/wfvisu~.cc
-common.sources = src/visu~-remote.cc src/util/self_path.cc
+common.sources = src/visu~.cc src/visu~-remote.cc src/util/self_path.cc
 gui.sources = src/visu~-gui.cc src/gui/w_dft_waterfall.cc
 
 all_cflags = -std=gnu++14 -fvisibility=hidden -D__STDC_FORMAT_MACROS=1 \
