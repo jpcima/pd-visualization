@@ -1,25 +1,25 @@
-#include "wfvisu~.h"
+#include "sgvisu~.h"
 #include "util/scope_guard.h"
 
-PD_LAYOUT_CHECK(t_wfvisu);
+PD_LAYOUT_CHECK(t_sgvisu);
 
-static t_class *wfvisu_class;
+static t_class *sgvisu_class;
 
-void wfvisu_tilde_setup() {
-  wfvisu_class = class_new(
-      gensym("wfvisu~"),
-      (t_newmethod)&wfvisu_new, (t_method)&wfvisu_free, sizeof(t_wfvisu),
+void sgvisu_tilde_setup() {
+  sgvisu_class = class_new(
+      gensym("sgvisu~"),
+      (t_newmethod)&sgvisu_new, (t_method)&sgvisu_free, sizeof(t_sgvisu),
       CLASS_DEFAULT, A_GIMME, A_NULL);
   CLASS_MAINSIGNALIN(
-      wfvisu_class, t_wfvisu, x_signalin);
+      sgvisu_class, t_sgvisu, x_signalin);
   class_addbang(
-      wfvisu_class, &wfvisu_bang);
+      sgvisu_class, &sgvisu_bang);
   class_addmethod(
-      wfvisu_class, (t_method)&wfvisu_dsp, gensym("dsp"), A_CANT, A_NULL);
+      sgvisu_class, (t_method)&sgvisu_dsp, gensym("dsp"), A_CANT, A_NULL);
 }
 
-void *wfvisu_new(t_symbol *s, int argc, t_atom *argv) {
-  t_wfvisu *x = (t_wfvisu *)pd_new(wfvisu_class);
+void *sgvisu_new(t_symbol *s, int argc, t_atom *argv) {
+  t_sgvisu *x = (t_sgvisu *)pd_new(sgvisu_class);
   if (!x)
     return nullptr;
   x->x_cleanup = nullptr;
@@ -29,9 +29,9 @@ void *wfvisu_new(t_symbol *s, int argc, t_atom *argv) {
 
   ///
   try {
-    new (x) t_wfvisu;
+    new (x) t_sgvisu;
     x->x_cleanup = [](t_visu *b) {
-      static_cast<t_wfvisu *>(b)->~t_wfvisu(); };
+      static_cast<t_sgvisu *>(b)->~t_sgvisu(); };
   } catch (std::exception &ex) {
     error("%s", ex.what());
     return nullptr;
@@ -39,9 +39,9 @@ void *wfvisu_new(t_symbol *s, int argc, t_atom *argv) {
 
   ///
   try {
-    if (!wfvisu_opts(x, argc, argv))
+    if (!sgvisu_opts(x, argc, argv))
       return nullptr;
-    visu_init(x, Visu_Waterfall);
+    visu_init(x, Visu_Spectrogram);
   } catch (std::exception &ex) {
     error("%s", ex.what());
     return nullptr;
@@ -51,11 +51,11 @@ void *wfvisu_new(t_symbol *s, int argc, t_atom *argv) {
   return x;
 }
 
-void wfvisu_free(t_wfvisu *x) {
+void sgvisu_free(t_sgvisu *x) {
   visu_free(x);
 }
 
-bool wfvisu_opts(t_wfvisu *x, int argc, t_atom *argv) {
+bool sgvisu_opts(t_sgvisu *x, int argc, t_atom *argv) {
   switch (argc) {
     case 0:
       break;
@@ -71,10 +71,10 @@ bool wfvisu_opts(t_wfvisu *x, int argc, t_atom *argv) {
   return true;
 }
 
-void wfvisu_bang(t_wfvisu *x) {
+void sgvisu_bang(t_sgvisu *x) {
   visu_bang(x);
 }
 
-void wfvisu_dsp(t_wfvisu *x, t_signal **sp) {
+void sgvisu_dsp(t_sgvisu *x, t_signal **sp) {
   visu_dsp(x, sp);
 }

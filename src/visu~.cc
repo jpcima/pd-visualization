@@ -54,7 +54,7 @@ t_int *visu_perform(t_int *w) {
 
 #ifdef _WIN32
 # include <winsock2.h>
-# inckude <windows.h>
+# include <windows.h>
 
 static bool wsainit = false;
 

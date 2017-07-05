@@ -1,5 +1,6 @@
 #include "visu~-common.h"
 #include "gui/w_dft_waterfall.h"
+#include "gui/w_dft_spectrogram.h"
 #include "util/unix.h"
 #include "util/unix_sock.h"
 #include <FL/Fl.H>
@@ -142,6 +143,9 @@ static void on_update_timeout(void *) {
   }
   fftwf_execute(fftplan.get());
 
+  for (unsigned i = 0; i < fftsize/2+1; ++i)
+    fftout[i] /= fftsize;
+
   W_DftVisu *dftvisu = ::dftvisu;
   dftvisu->update_data(fftout, fftsize/2+1, samplerate, false);
   fftcandraw = true;
@@ -241,6 +245,11 @@ int main(int argc, char *argv[]) {
     case Visu_Waterfall: {
       window->resize(window->x(), window->y(), 1000, 400);
       ::dftvisu = new W_DftWaterfall(0, 0, window->w(), window->h());
+      break;
+    }
+    case Visu_Spectrogram: {
+      window->resize(window->x(), window->y(), 1000, 200);
+      ::dftvisu = new W_DftSpectrogram(0, 0, window->w(), window->h());
       break;
     }
     default:
