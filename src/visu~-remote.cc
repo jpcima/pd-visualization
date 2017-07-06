@@ -70,6 +70,8 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   if (is_running())
     return;
 
+  bool success = false;
+
   unix_sock sockpair[2];
   unix_socketpair(AF_UNIX, SOCK_DGRAM, PF_UNIX, sockpair);
 
@@ -161,22 +163,37 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
     throw std::system_error(ps_err, std::generic_category());
 #endif
 
-  // wait until ready to prevent startup hiccups
-  const int ready_timeout = 10;
-  socket_retry(poll1, wfd, 1000 * ready_timeout, POLLIN);
-
-  // get startup message from child
-  char bytebuf {};
-  if (socket_retry(recv, wfd, &bytebuf, 1, 0) != 1 || bytebuf != '!') {
-    int err = socket_errno();
+  scope(exit) {
+    if (!success) {
 #ifdef _WIN32
-    TerminateProcess(hprocess, 1);
+      TerminateProcess(hprocess, 1);
 #else
-    kill(pid, SIGTERM);
-    posix_retry(waitpid, pid, nullptr, 0);
+      kill(pid, SIGTERM);
+      posix_retry(waitpid, pid, nullptr, 0);
 #endif
-    throw std::system_error(err, socket_category());
+    }
+  };
+
+  // wait until ready to prevent startup hiccups
+  bool ready = false;
+  const unsigned ready_timeout = 10;
+  for (unsigned i = 0; !ready && i < ready_timeout; ++i) {
+    socket_retry(poll1, wfd, 1000, POLLIN);
+    char bytebuf {};
+    size_t n = socket_retry(recv, wfd, &bytebuf, 1, 0);
+    if ((ssize_t)n == -1) {
+      int err = socket_errno();
+      if (err != SOCK_ERR(EWOULDBLOCK))
+        throw std::system_error(err, socket_category());
+    } else if (n == 1) {
+      if (bytebuf != '!')
+        throw std::runtime_error("error in communication protocol");
+      ready = true;
+    }
   }
+
+  if (!ready)
+    throw std::runtime_error("timeout waiting for message from child process");
 
 #ifdef _WIN32
   P->hprocess = hprocess;
@@ -185,6 +202,7 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   P->pid = pid;
 #endif
   P->sock = std::move(sockpair[1]);
+  success = true;
 }
 
 void RemoteVisu::stop() {
