@@ -3,6 +3,7 @@
 #include "util/scope_guard.h"
 #include "util/unix.h"
 #include <algorithm>
+#include <chrono>
 #include <system_error>
 #include <stdlib.h>
 #include <string.h>
@@ -177,8 +178,11 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   // wait until ready to prevent startup hiccups
   bool ready = false;
   const unsigned ready_timeout = 10;
-  for (unsigned i = 0; !ready && i < ready_timeout; ++i) {
-    socket_retry(poll1, wfd, 1000, POLLIN);
+  typedef std::chrono::steady_clock clock;
+  clock::time_point t1 = clock::now();
+  while (!ready) {
+    timeval tv { ready_timeout, 0 };
+    socket_retry(select1, wfd, -1, -1, &tv);
     char bytebuf {};
     size_t n = socket_retry(recv, wfd, &bytebuf, 1, 0);
     if ((ssize_t)n == -1) {
@@ -190,6 +194,8 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
         throw std::runtime_error("error in communication protocol");
       ready = true;
     }
+    if (clock::now() - t1 > std::chrono::seconds(ready_timeout))
+      break;
   }
 
   if (!ready)
