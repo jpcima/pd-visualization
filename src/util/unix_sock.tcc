@@ -57,6 +57,10 @@ inline SOCKET unix_sock::operator*() const {
   return sock_;
 }
 
+inline unix_sock::operator bool() const {
+  return sock_ != INVALID_SOCKET;
+}
+
 #ifdef _WIN32
 inline const std::error_category &socket_category() noexcept {
   return std::system_category();

@@ -33,6 +33,7 @@ class unix_sock {
   void reset(SOCKET sock = INVALID_SOCKET);
   SOCKET get() const;
   SOCKET operator*() const;
+  explicit operator bool() const;
 
  private:
   SOCKET sock_ = INVALID_SOCKET;

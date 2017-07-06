@@ -15,6 +15,7 @@ class unix_fd {
   void reset(int fd = -1);
   int get() const;
   int operator*() const;
+  explicit operator bool() const;
 
  private:
   int fd_ = -1;

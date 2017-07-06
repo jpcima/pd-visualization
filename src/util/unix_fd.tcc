@@ -42,6 +42,10 @@ inline int unix_fd::operator*() const {
   return fd_;
 }
 
+inline unix_fd::operator bool() const {
+  return fd_ != -1;
+}
+
 inline void unix_pipe(unix_fd p[2]) {
   int pa[2];
 #ifdef _WIN32
