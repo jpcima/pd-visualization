@@ -9,8 +9,6 @@ These visualizers run in external processes and do not disturb real-time signal 
 The bang message is used to show or hide the visualizer window. By default the visualizer is not started.
 When started and in the hidden state, the visualizers do not consume any CPU time.
 
-Please note: the bang method is not currently real-time safe, so avoid it in live performance. I must fix this in future versions.
-
 Platform compatibility:
 - Linux
 - Windows
