@@ -4,6 +4,7 @@
 #include "util/unix.h"
 #include <algorithm>
 #include <chrono>
+#include <mutex>
 #include <system_error>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,10 @@ struct RemoteVisu::Impl {
   unix_sock sock;
   std::unique_ptr<MessageHeader, void(*)(void *)> msg{nullptr, &::free};
   bool send_message(const MessageHeader *m);
+
+  std::mutex sock_mutex;
+  SOCKET acquire_socket(std::unique_lock<std::mutex> &lock);
+  SOCKET try_acquire_socket(std::unique_lock<std::mutex> &lock);
 };
 
 RemoteVisu::RemoteVisu()
@@ -70,6 +75,9 @@ bool RemoteVisu::is_running() const {
 void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   if (is_running())
     return;
+
+  std::unique_lock<std::mutex> lock;
+  P->acquire_socket(lock);
 
   bool success = false;
 
@@ -263,9 +271,22 @@ bool RemoteVisu::send_samples(float fs, const float *smp, unsigned n) {
 }
 
 bool RemoteVisu::Impl::send_message(const MessageHeader *m) {
-  SOCKET wfd = this->sock.get();
+  std::unique_lock<std::mutex> lock;
+  SOCKET wfd = this->try_acquire_socket(lock);
   if (wfd == INVALID_SOCKET)
     return -1;
   return socket_retry(
       send, wfd, (const char *)m, sizeof(MessageHeader) + m->len, 0) != -1;
+}
+
+SOCKET RemoteVisu::Impl::acquire_socket(std::unique_lock<std::mutex> &lock) {
+  lock = std::unique_lock<std::mutex>(this->sock_mutex);
+  return this->sock.get();
+}
+
+SOCKET RemoteVisu::Impl::try_acquire_socket(std::unique_lock<std::mutex> &lock) {
+  lock = std::unique_lock<std::mutex>(this->sock_mutex, std::try_to_lock);
+  if (!lock.owns_lock())
+    return INVALID_SOCKET;
+  return this->sock.get();
 }
