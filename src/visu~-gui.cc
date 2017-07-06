@@ -66,18 +66,24 @@ static void on_update_timeout(void *);
 static void on_fftdraw_timeout(void *);
 
 ///
-static MessageHeader *receive_from_fd(SOCKET rfd) {
+static int receive_from_fd(SOCKET rfd, MessageHeader **pmsg) {
   uint8_t *recvbuf = ::recvbuf.get();
   MessageHeader *msg = (MessageHeader *)recvbuf;
 
   size_t nread = socket_retry(recv, rfd, (char *)msg, msgmax, 0);
-  if ((ssize_t)nread == -1)
-    return nullptr;
+  if ((ssize_t)nread == -1) {
+    if (socket_errno() == SOCK_ERR(EWOULDBLOCK))
+      return 0;
+    return -1;
+  }
+  if (nread == 0)
+    return 0;
   if (nread < sizeof(MessageHeader) ||
       nread != sizeof(MessageHeader) + msg->len)
-    return nullptr;
+    return -1;
 
-  return msg;
+  if (pmsg) *pmsg = msg;
+  return 1;
 }
 
 static bool handle_message(const MessageHeader *msg) {
@@ -116,19 +122,14 @@ static bool handle_message(const MessageHeader *msg) {
 static void on_fd_input(FL_SOCKET, void *) {
   SOCKET rfd = ::arg_fd;
   int revents {};
-  unsigned msgcount = 0;
-  const int errevents = POLLERR|POLLHUP|POLLNVAL;
-  do {
-    MessageHeader *msg = receive_from_fd(rfd);
-    if (!msg)
+
+  MessageHeader *msg = nullptr;
+  for (int ret; (ret = receive_from_fd(rfd, &msg)) != 0;) {
+    if (ret == -1)
       exit(1);
     if (!handle_message(msg))
       exit(1);
-    ++msgcount;
-    revents = socket_retry(poll1, rfd, 0, POLLIN);
-    if (revents == -1 || (revents & errevents))
-      exit(1);
-  } while (revents & POLLIN);
+  }
 }
 
 static float window_nutall(float r) {
@@ -299,6 +300,8 @@ int main(int argc, char *argv[]) {
   if (arg_fd != INVALID_SOCKET) {
     // ready
     if (socket_retry(send, arg_fd, "!", 1, 0) == -1)
+      throw std::system_error(socket_errno(), socket_category());
+    if (socksetblocking(arg_fd, false) == -1)
       throw std::system_error(socket_errno(), socket_category());
   }
 
