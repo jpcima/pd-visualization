@@ -3,3 +3,4 @@
 -DFLEXT_SHARED
 -I.
 -I../thirdparty/color/src
+-I../thirdparty/kfr/include
