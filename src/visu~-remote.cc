@@ -190,7 +190,7 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   clock::time_point t1 = clock::now();
   while (!ready) {
     timeval tv { ready_timeout, 0 };
-    socket_retry(select1, wfd, -1, -1, &tv);
+    socket_retry(select1, wfd, INVALID_SOCKET, INVALID_SOCKET, &tv);
     char bytebuf {};
     size_t n = socket_retry(recv, wfd, &bytebuf, 1, 0);
     if ((ssize_t)n == -1) {
@@ -224,14 +224,22 @@ void RemoteVisu::stop() {
   HANDLE hprocess = P->hprocess;
   if (!hprocess)
     return;
+#else
+  pid_t pid = P->pid;
+  if (pid == -1)
+    return;
+#endif
+
+  { std::unique_lock<std::mutex> lock;
+    P->acquire_socket(lock);
+    P->sock.reset(); }
+
+#ifdef _WIN32
   TerminateProcess(hprocess, 1);
   WaitForSingleObject(hprocess, INFINITE);
   CloseHandle(hprocess);
   P->hprocess = nullptr;
 #else
-  pid_t pid = P->pid;
-  if (pid == -1)
-    return;
   kill(pid, SIGTERM);
   waitpid(pid, nullptr, 0);
   P->pid = -1;

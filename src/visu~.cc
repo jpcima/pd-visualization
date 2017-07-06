@@ -6,11 +6,24 @@ t_visu::t_visu() {
 }
 
 t_visu::~t_visu() {
+  if (this->x_commander.joinable()) {
+    SOCKET fd = this->x_comm[1].get();
+    char msg = 0;
+    for (size_t n; (n = socket_retry(send, fd, &msg, 1, 0)) == 0 ||
+             ((ssize_t)n == -1 && socket_errno() == SOCK_ERR(EWOULDBLOCK));)
+      select1(INVALID_SOCKET, fd, INVALID_SOCKET, nullptr);
+    try { this->x_commander.join(); }
+    catch (std::system_error &) { /* must not throw in destructor */ }
+  }
 }
 
 void visu_init(t_visu *x, VisuType t) {
   x->x_visutype = t;
   x->x_remote.reset(new RemoteVisu);
+  unix_socketpair(AF_UNIX, SOCK_DGRAM, 0, x->x_comm);
+  if (socksetblocking(x->x_comm[1].get(), false) == -1)
+    throw std::system_error(socket_errno(), socket_category());
+  x->x_commander = std::thread(&t_visu::commander_thread_routine, x);
 }
 
 void visu_free(t_visu *x) {
@@ -19,15 +32,9 @@ void visu_free(t_visu *x) {
 }
 
 void visu_bang(t_visu *x) {
-  // TODO not RT safe
-  // TODO not exception safe
-  RemoteVisu &remote = *x->x_remote;
-  if (remote.is_running()) {
-    remote.toggle_visibility();
-  } else {
-    std::string pgm = self_relative("visu~-gui");
-    remote.start(pgm.c_str(), x->x_visutype, x->x_title.c_str());
-  }
+  int fd = x->x_comm[1].get();
+  char msg = 1;
+  send(fd, &msg, 1, 0);
 }
 
 void visu_dsp(t_visu *x, t_signal **sp) {
@@ -50,6 +57,36 @@ t_int *visu_perform(t_int *w) {
 #endif
 
   return w;
+}
+
+void t_visu::commander_thread_routine() {
+  int fd = this->x_comm[0].get();
+  RemoteVisu &remote = *this->x_remote;
+
+  for (;;) {
+    char msg {};
+    size_t n = socket_retry(recv, fd, &msg, 1, 0);
+
+    if ((ssize_t)n == -1)
+      throw std::system_error(socket_errno(), socket_category());
+
+    if (n != 1)
+      throw std::runtime_error("error in communication protocol");
+
+    if (msg == 0) {  // quit
+      remote.stop();
+      break;
+    }
+
+    if (msg == 1) {  // bang
+      if (remote.is_running()) {
+        remote.toggle_visibility();
+      } else {
+        std::string pgm = self_relative("visu~-gui");
+        remote.start(pgm.c_str(), this->x_visutype, this->x_title.c_str());
+      }
+    }
+  }
 }
 
 #ifdef _WIN32

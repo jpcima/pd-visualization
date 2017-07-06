@@ -1,6 +1,8 @@
 #pragma once
 #include "visu~-common.h"
+#include "util/unix.h"
 #include <m_pd.h>
+#include <thread>
 #include <string>
 #include <memory>
 
@@ -16,7 +18,10 @@ struct t_visu {
   VisuType x_visutype = Visu_Default;
   std::string x_title;
   std::unique_ptr<RemoteVisu> x_remote;
+  std::thread x_commander;
+  unix_sock x_comm[2];
   void (*x_cleanup)(t_visu *) = nullptr;
+  void commander_thread_routine();
 };
 
 void visu_init(t_visu *x, VisuType t);
