@@ -32,7 +32,7 @@ void visu_free(t_visu *x) {
 }
 
 void visu_bang(t_visu *x) {
-  int fd = x->x_comm[1].get();
+  SOCKET fd = x->x_comm[1].get();
   char msg = 1;
   send(fd, &msg, 1, 0);
 }
@@ -60,7 +60,7 @@ t_int *visu_perform(t_int *w) {
 }
 
 void t_visu::commander_thread_routine() {
-  int fd = this->x_comm[0].get();
+  SOCKET fd = this->x_comm[0].get();
   RemoteVisu &remote = *this->x_remote;
 
   for (;;) {
