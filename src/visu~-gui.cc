@@ -2,7 +2,6 @@
 #include "gui/w_dft_waterfall.h"
 #include "gui/w_dft_spectrogram.h"
 #include "util/unix.h"
-#include "util/unix_sock.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Double_Window.H>
@@ -71,7 +70,7 @@ static MessageHeader *receive_from_fd(SOCKET rfd) {
   uint8_t *recvbuf = ::recvbuf.get();
   MessageHeader *msg = (MessageHeader *)recvbuf;
 
-  size_t nread = eintr_retry(recv, rfd, (char *)msg, msgmax, 0);
+  size_t nread = socket_retry(recv, rfd, (char *)msg, msgmax, 0);
   if ((ssize_t)nread == -1)
     return nullptr;
   if (nread < sizeof(MessageHeader) ||
@@ -126,7 +125,7 @@ static void on_fd_input(FL_SOCKET, void *) {
     if (!handle_message(msg))
       exit(1);
     ++msgcount;
-    revents = eintr_retry(poll1, rfd, 0, POLLIN);
+    revents = socket_retry(poll1, rfd, 0, POLLIN);
     if (revents == -1 || (revents & errevents))
       exit(1);
   } while (revents & POLLIN);
@@ -299,7 +298,7 @@ int main(int argc, char *argv[]) {
 
   if (arg_fd != INVALID_SOCKET) {
     // ready
-    if (eintr_retry(send, arg_fd, "!", 1, 0) == -1)
+    if (socket_retry(send, arg_fd, "!", 1, 0) == -1)
       throw std::system_error(socket_errno(), socket_category());
   }
 

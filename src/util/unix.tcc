@@ -8,6 +8,7 @@
 # include <poll.h>
 #endif
 
+#if !defined(_WIN32) || _WIN32_WINNT >= 0x600
 inline int poll1(SOCKET fd, int timeout, int events) {
 #ifdef _WIN32
   WSAPOLLFD pfd;
@@ -26,13 +27,52 @@ inline int poll1(SOCKET fd, int timeout, int events) {
     ret = pfd.revents;
   return ret;
 }
+#endif
+
+inline int select1(int readfd, int writefd, int exceptfd, struct timeval *timeout) {
+  int nfds = 0;
+  int fds[3] { readfd, writefd, exceptfd };
+  fd_set sets[3];
+  fd_set *setp[3] {};
+  for (unsigned i = 0; i < 3; ++i) {
+    if (fds[i] != -1) {
+      FD_ZERO(&sets[i]);
+      FD_SET(fds[i], &sets[i]);
+      setp[i] = &sets[i];
+      nfds = std::max(nfds, fds[i] + 1);
+    }
+  }
+  return select(nfds, setp[0], setp[1], setp[2], timeout);
+}
+
+inline int socksetblocking(SOCKET fd, bool block) {
+#ifdef _WIN32
+  u_long wbio = !block;
+  bool fail = ioctlsocket(fd, FIONBIO, &wbio) == SOCKET_ERROR;
+#else
+  int flags = fcntl(fd, F_GETFL);
+  bool fail = flags == -1;
+  if (!fail) {
+    int newflags = block ? (flags&~O_NONBLOCK) : (flags|O_NONBLOCK);
+    if (flags != newflags)
+      fail = fcntl(fd, F_SETFL, newflags) == -1;
+  }
+#endif
+  return fail ? -1 : 0;
+}
 
 template <class F, class... A>
-auto eintr_retry(const F &f, A &&... args) {
+auto posix_retry(const F &f, A &&... args) {
   auto ret = f(std::forward<A>(args)...);
-#if !defined(_WIN32)
   while (ret == -1 && errno == EINTR)
     ret = f(std::forward<A>(args)...);
-#endif
   return ret;
 }
+
+template <class F, class... A>
+auto socket_retry(const F &f, A &&... args) {
+  auto ret = f(std::forward<A>(args)...);
+  while (ret == -1 && errno == SOCK_ERR(EINTR))
+    ret = f(std::forward<A>(args)...);
+   return ret;
+ }

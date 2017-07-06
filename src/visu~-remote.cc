@@ -1,7 +1,6 @@
 #include "visu~-remote.h"
 #include "visu~-common.h"
 #include "util/scope_guard.h"
-#include "util/unix_sock.h"
 #include "util/unix.h"
 #include <algorithm>
 #include <system_error>
@@ -58,7 +57,7 @@ bool RemoteVisu::is_running() const {
   if (pid == -1)
     return false;
   int wstate = 0;
-  if (eintr_retry(waitpid, pid, &wstate, WNOHANG) > 0 &&
+  if (posix_retry(waitpid, pid, &wstate, WNOHANG) > 0 &&
       (WIFEXITED(wstate) || WIFSIGNALED(wstate))) {
     P->pid = -1;
     return false;
@@ -76,18 +75,15 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
 
   SOCKET rfd = sockpair[0].get();
   SOCKET wfd = sockpair[1].get();
-#ifdef _WIN32
-  u_long wbio = 1;
-  if (ioctlsocket(wfd, FIONBIO, &wbio) == SOCKET_ERROR) {
-#else
-  int wfdflags = fcntl(wfd, F_GETFD);
-  int wflflags = fcntl(wfd, F_GETFL);
-  if (wfdflags == -1 || wflflags == -1 ||
-      fcntl(wfd, F_SETFD, wfdflags|FD_CLOEXEC) == -1 ||
-      fcntl(wfd, F_SETFL, wflflags|O_NONBLOCK) == -1) {
-#endif
+
+  if (socksetblocking(wfd, false) == -1)
     throw std::system_error(socket_errno(), socket_category());
-  }
+
+#ifndef _WIN32
+  int wfdflags = fcntl(wfd, F_GETFD);
+  if (wfdflags == -1 || fcntl(wfd, F_SETFD, wfdflags|FD_CLOEXEC) == -1)
+    throw std::system_error(socket_errno(), socket_category());
+#endif
   if (setsockopt(
           wfd, SOL_SOCKET, SO_SNDBUF, (const char *)&sockbuf, sizeof(sockbuf)) == -1)
     throw std::system_error(socket_errno(), socket_category());
@@ -167,17 +163,17 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
 
   // wait until ready to prevent startup hiccups
   const int ready_timeout = 10;
-  eintr_retry(poll1, wfd, 1000 * ready_timeout, POLLIN);
+  socket_retry(poll1, wfd, 1000 * ready_timeout, POLLIN);
 
   // get startup message from child
   char bytebuf {};
-  if (eintr_retry(recv, wfd, &bytebuf, 1, 0) != 1 || bytebuf != '!') {
+  if (socket_retry(recv, wfd, &bytebuf, 1, 0) != 1 || bytebuf != '!') {
     int err = socket_errno();
 #ifdef _WIN32
     TerminateProcess(hprocess, 1);
 #else
     kill(pid, SIGTERM);
-    eintr_retry(waitpid, pid, nullptr, 0);
+    posix_retry(waitpid, pid, nullptr, 0);
 #endif
     throw std::system_error(err, socket_category());
   }
@@ -246,6 +242,6 @@ bool RemoteVisu::Impl::send_message(const MessageHeader *m) {
   SOCKET wfd = this->sock.get();
   if (wfd == INVALID_SOCKET)
     return -1;
-  return eintr_retry(
+  return socket_retry(
       send, wfd, (const char *)m, sizeof(MessageHeader) + m->len, 0) != -1;
 }

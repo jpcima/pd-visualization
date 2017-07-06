@@ -8,9 +8,11 @@
 #ifdef _WIN32
 # define PRIdSOCKET PRIdPTR
 # define SCNdSOCKET SCNdPTR
+# define SOCK_ERR(x) WSA##x
 #else
 # define PRIdSOCKET "d"
 # define SCNdSOCKET "d"
+# define SOCK_ERR(x) x
 typedef int SOCKET;
 static constexpr int INVALID_SOCKET = -1;
 #endif
