@@ -19,21 +19,20 @@ static constexpr int INVALID_SOCKET = -1;
 
 class unix_sock {
  public:
-  unix_sock();
+  constexpr unix_sock() noexcept;
+  explicit constexpr unix_sock(SOCKET sock) noexcept;
   ~unix_sock();
-
-  explicit unix_sock(SOCKET sock);
 
   unix_sock(const unix_sock &) = delete;
   unix_sock &operator=(const unix_sock &) = delete;
 
-  unix_sock(unix_sock &&o);
-  unix_sock &operator=(unix_sock &&o);
+  unix_sock(unix_sock &&o) noexcept;
+  unix_sock &operator=(unix_sock &&o) noexcept;
 
-  void reset(SOCKET sock = INVALID_SOCKET);
-  SOCKET get() const;
-  SOCKET operator*() const;
-  explicit operator bool() const;
+  void reset(SOCKET sock = INVALID_SOCKET) noexcept;
+  SOCKET get() const noexcept;
+  SOCKET operator*() const noexcept;
+  explicit operator bool() const noexcept;
 
  private:
   SOCKET sock_ = INVALID_SOCKET;

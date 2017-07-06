@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-inline unix_fd::unix_fd() {
+inline constexpr unix_fd::unix_fd() noexcept {
 }
 
 inline unix_fd::~unix_fd() {
@@ -11,22 +11,22 @@ inline unix_fd::~unix_fd() {
     close(fd_);
 }
 
-inline unix_fd::unix_fd(int fd)
+inline constexpr unix_fd::unix_fd(int fd) noexcept
     : fd_(fd) {
 }
 
-inline unix_fd::unix_fd(unix_fd &&o)
+inline unix_fd::unix_fd(unix_fd &&o) noexcept
     : fd_(o.fd_) {
   o.fd_ = -1;
 }
 
-inline unix_fd &unix_fd::operator=(unix_fd &&o) {
+inline unix_fd &unix_fd::operator=(unix_fd &&o) noexcept {
   reset(o.fd_);
   o.fd_ = -1;
   return *this;
 }
 
-inline void unix_fd::reset(int fd) {
+inline void unix_fd::reset(int fd) noexcept {
   if (fd != fd_) {
     if (fd_ != -1)
       close(fd_);
@@ -34,15 +34,15 @@ inline void unix_fd::reset(int fd) {
   }
 }
 
-inline int unix_fd::get() const {
+inline int unix_fd::get() const noexcept {
   return fd_;
 }
 
-inline int unix_fd::operator*() const {
+inline int unix_fd::operator*() const noexcept {
   return fd_;
 }
 
-inline unix_fd::operator bool() const {
+inline unix_fd::operator bool() const noexcept {
   return fd_ != -1;
 }
 

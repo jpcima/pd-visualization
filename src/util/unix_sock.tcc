@@ -8,7 +8,7 @@
 # include <sys/socket.h>
 #endif
 
-inline unix_sock::unix_sock() {
+inline constexpr unix_sock::unix_sock() noexcept {
 }
 
 inline unix_sock::~unix_sock() {
@@ -21,22 +21,22 @@ inline unix_sock::~unix_sock() {
   }
 }
 
-inline unix_sock::unix_sock(SOCKET sock)
+inline constexpr unix_sock::unix_sock(SOCKET sock) noexcept
     : sock_(sock) {
 }
 
-inline unix_sock::unix_sock(unix_sock &&o)
+inline unix_sock::unix_sock(unix_sock &&o) noexcept
     : sock_(o.sock_) {
   o.sock_ = INVALID_SOCKET;
 }
 
-inline unix_sock &unix_sock::operator=(unix_sock &&o) {
+inline unix_sock &unix_sock::operator=(unix_sock &&o) noexcept {
   reset(o.sock_);
   o.sock_ = INVALID_SOCKET;
   return *this;
 }
 
-inline void unix_sock::reset(SOCKET sock) {
+inline void unix_sock::reset(SOCKET sock) noexcept {
   if (sock != sock_) {
     if (sock_ != INVALID_SOCKET) {
 #ifdef _WIN32
@@ -49,15 +49,15 @@ inline void unix_sock::reset(SOCKET sock) {
   }
 }
 
-inline SOCKET unix_sock::get() const {
+inline SOCKET unix_sock::get() const noexcept {
   return sock_;
 }
 
-inline SOCKET unix_sock::operator*() const {
+inline SOCKET unix_sock::operator*() const noexcept {
   return sock_;
 }
 
-inline unix_sock::operator bool() const {
+inline unix_sock::operator bool() const noexcept {
   return sock_ != INVALID_SOCKET;
 }
 
