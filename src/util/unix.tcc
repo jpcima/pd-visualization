@@ -29,13 +29,13 @@ inline int poll1(SOCKET fd, int timeout, int events) {
 }
 #endif
 
-inline int select1(int readfd, int writefd, int exceptfd, struct timeval *timeout) {
-  int nfds = 0;
-  int fds[3] { readfd, writefd, exceptfd };
+inline int select1(SOCKET readfd, SOCKET writefd, SOCKET exceptfd, struct timeval *timeout) {
+  SOCKET nfds = 0;
+  SOCKET fds[3] { readfd, writefd, exceptfd };
   fd_set sets[3];
   fd_set *setp[3] {};
   for (unsigned i = 0; i < 3; ++i) {
-    if (fds[i] != -1) {
+    if (fds[i] != INVALID_SOCKET) {
       FD_ZERO(&sets[i]);
       FD_SET(fds[i], &sets[i]);
       setp[i] = &sets[i];
