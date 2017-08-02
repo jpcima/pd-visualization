@@ -12,6 +12,7 @@
 #endif
 #include <getopt.h>
 #include <string>
+#include <array>
 #include <memory>
 #include <complex>
 #include <cmath>
@@ -53,13 +54,14 @@ std::unique_ptr<kfr::u8[]> ffttemp;
 #endif
 std::unique_ptr<float[]> fftin;
 std::unique_ptr<std::complex<float>[]> fftout;
+std::unique_ptr<float[]> fftwindow;
 bool fftcandraw = false;
 
-constexpr float updatedelta = 30e-3f;
+constexpr float updatedelta = 10e-3f;
 
 constexpr unsigned smemsize = fftsize;
 unsigned smemindex = 0;
-std::unique_ptr<float[]> smem(new float[smemsize]());
+std::unique_ptr<float[]> smembuf(new float[2 * smemsize]());
 float smemtime = 0;
 
 bool enabled = false;
@@ -145,11 +147,11 @@ static bool handle_message(const MessageHeader *msg) {
       break;
 
     case MessageTag_Samples: {
-      float *smem = ::smem.get();
+      float *smembuf = ::smembuf.get();
       const float sr = ::samplerate;
       float t = ::smemtime;
       for (unsigned i = 0, n = msg->len / sizeof(float); i < n; ++i) {
-        smem[smemindex] = msg->f[i];
+        smembuf[smemindex] = smembuf[smemindex + smemsize] = msg->f[i];
         smemindex = (smemindex + 1) % smemsize;
         t += 1 / sr;
         if (t >= updatedelta) {
@@ -182,10 +184,12 @@ static void on_fd_input(FL_SOCKET, void *) {
 }
 
 static float window_nutall(float r) {
-  const float pi = M_PI;
-  const float a0 = 0.355768, a1 = 0.487396, a2 = 0.144232, a3 = 0.012604;
-  return a0 - a1 * std::cos(2 * pi * r) + a2 * std::cos(4 * pi * r)
-      - a3 * std::cos(6 * pi * r);
+  const std::array<float, 4> a {0.355768, -0.487396, 0.144232, -0.012604};
+  float p = r * 2 * float(M_PI);
+  float w = a[0];
+  for (unsigned i = 1; i < a.size(); ++i)
+    w += a[i] * std::cos(i * p);
+  return w;
 }
 
 static void update_dft_data() {
@@ -193,10 +197,10 @@ static void update_dft_data() {
   std::complex<float> *fftout = ::fftout.get();
   unsigned fftsize = ::fftsize;
 
-  for (unsigned i = 0; i < fftsize; ++i) {
-    float w = window_nutall(i / float(fftsize-1));
-    fftin[fftsize-1-i] = w * smem[(smemindex-i) % smemsize];
-  }
+  float *smem = ::smembuf.get() + (smemindex - smemsize) % smemsize;
+  for (unsigned i = 0; i < fftsize; ++i)
+    fftin[i] = fftwindow[i] * smem[i];
+
 #ifdef USE_FFTW
   fftwf_execute(fftplan.get());
 #else
@@ -302,6 +306,10 @@ int main(int argc, char *argv[]) {
   fftplan.reset(new kfr::dft_plan_real<float>(fftsize));
   ffttemp.reset(new kfr::u8[fftplan->temp_size]());
 #endif
+
+  fftwindow.reset(new float[fftsize]());
+  for (unsigned i = 0; i < fftsize; ++i)
+    fftwindow[i] = window_nutall(i / float(fftsize-1));
 
   Fl::visual(FL_RGB);
 
