@@ -41,8 +41,7 @@ float samplerate = 44100;
 Fl_Double_Window *window = nullptr;
 W_DftVisu *dftvisu = nullptr;
 
-constexpr double update_interval = 10e-3;
-constexpr double fftdraw_interval = 1 / 30.0;
+constexpr double fftdraw_interval = 1 / 24.0;
 
 constexpr unsigned fftsize = 2 * 1024;
 #ifdef USE_FFTW
@@ -52,21 +51,59 @@ std::unique_ptr<fftwf_plan_s, void(*)(fftwf_plan)> fftplan{
 std::unique_ptr<kfr::dft_plan_real<float>> fftplan;
 std::unique_ptr<kfr::u8[]> ffttemp;
 #endif
-std::unique_ptr<float []> fftin;
-std::unique_ptr<std::complex<float> []> fftout;
+std::unique_ptr<float[]> fftin;
+std::unique_ptr<std::complex<float>[]> fftout;
 bool fftcandraw = false;
+
+constexpr float updatedelta = 30e-3f;
 
 constexpr unsigned smemsize = fftsize;
 unsigned smemindex = 0;
 std::unique_ptr<float[]> smem(new float[smemsize]());
+float smemtime = 0;
+
+bool enabled = false;
 
 }  // namespace
 
-static void on_update_timeout(void *);
+static void update_dft_data();
 static void on_fftdraw_timeout(void *);
+static void on_fd_input(FL_SOCKET, void *);
 
 ///
+static void enable() {
+  if (!::enabled) {
+    Fl::add_timeout(fftdraw_interval, &on_fftdraw_timeout);
+    if (arg_fd != INVALID_SOCKET)
+      Fl::add_fd(arg_fd, FL_READ, &on_fd_input);
+    ::enabled = true;
+  }
+}
+
+static void disable() {
+  if (::enabled) {
+    Fl::remove_timeout(&on_fftdraw_timeout);
+    ::enabled = false;
+  }
+}
+
+static bool check_alive_parent_process() {
+#ifdef _WIN32
+  if (!hparentprocess)
+    return true;
+  DWORD ec = 0;
+  return GetExitCodeProcess(hparentprocess, &ec) && ec == STILL_ACTIVE;
+#else
+  if (arg_ppid == -1)
+    return true;
+  return getppid() == arg_ppid;
+#endif
+}
+
 static int receive_from_fd(SOCKET rfd, MessageHeader **pmsg) {
+  if (!check_alive_parent_process())
+    exit(1);
+
   uint8_t *recvbuf = ::recvbuf.get();
   MessageHeader *msg = (MessageHeader *)recvbuf;
 
@@ -88,28 +125,40 @@ static int receive_from_fd(SOCKET rfd, MessageHeader **pmsg) {
 
 static bool handle_message(const MessageHeader *msg) {
   switch (msg->tag) {
-    case MessageTag_SampleRate:
-      samplerate = msg->f[0]; break;
+    case MessageTag_SampleRate: {
+      float sr = msg->f[0];
+      if (!std::isfinite(sr) || sr <= 0)
+        exit(1);
+      ::samplerate = sr;
+      break;
+    }
 
     case MessageTag_Toggle:
       if (window->shown()) {
-        Fl::remove_timeout(&on_update_timeout);
-        Fl::remove_timeout(&on_fftdraw_timeout);
-        ::dftvisu->reset_data();
+        disable();
         window->hide();
+        ::dftvisu->reset_data();
       } else {
-        Fl::add_timeout(update_interval, &on_update_timeout);
-        Fl::add_timeout(fftdraw_interval, &on_fftdraw_timeout);
+        enable();
         window->show();
       }
       break;
 
     case MessageTag_Samples: {
       float *smem = ::smem.get();
+      const float sr = ::samplerate;
+      float t = ::smemtime;
       for (unsigned i = 0, n = msg->len / sizeof(float); i < n; ++i) {
         smem[smemindex] = msg->f[i];
         smemindex = (smemindex + 1) % smemsize;
+        t += 1 / sr;
+        if (t >= updatedelta) {
+          if (::enabled)
+            update_dft_data();
+          t -= updatedelta;
+        }
       }
+      ::smemtime = t;
       break;
     }
 
@@ -139,19 +188,7 @@ static float window_nutall(float r) {
       - a3 * std::cos(6 * pi * r);
 }
 
-static void on_update_timeout(void *) {
-#ifdef _WIN32
-  if (hparentprocess) {
-    DWORD ec = 0;
-    bool alive = GetExitCodeProcess(hparentprocess, &ec) && ec == STILL_ACTIVE;
-    if (!alive)
-      exit(1);
-  }
-#else
-  if (arg_ppid != -1 && getppid() != arg_ppid)
-    exit(1);
-#endif
-
+static void update_dft_data() {
   float *fftin = ::fftin.get();
   std::complex<float> *fftout = ::fftout.get();
   unsigned fftsize = ::fftsize;
@@ -172,11 +209,12 @@ static void on_update_timeout(void *) {
   W_DftVisu *dftvisu = ::dftvisu;
   dftvisu->update_data(fftout, fftsize/2+1, samplerate);
   fftcandraw = true;
-
-  Fl::repeat_timeout(update_interval, &on_update_timeout);
 }
 
 static void on_fftdraw_timeout(void *) {
+  if (!check_alive_parent_process())
+    exit(1);
+
   if (fftcandraw) {
     dftvisu->redraw();
     fftcandraw = false;
@@ -288,13 +326,7 @@ int main(int argc, char *argv[]) {
   window->end();
 
   window->show();
-
-  Fl::add_timeout(update_interval, &on_update_timeout);
-  Fl::add_timeout(fftdraw_interval, &on_fftdraw_timeout);
-
-  if (arg_fd != INVALID_SOCKET)
-    Fl::add_fd(arg_fd, FL_READ, &on_fd_input);
-
+  enable();
   window->wait_for_expose();
 
   if (arg_fd != INVALID_SOCKET) {
