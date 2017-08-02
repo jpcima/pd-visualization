@@ -43,7 +43,7 @@ float samplerate = 44100;
 Fl_Double_Window *window = nullptr;
 W_DftVisu *dftvisu = nullptr;
 
-constexpr double fftdraw_interval = 1 / 24.0;
+constexpr double redraw_interval = 1 / 24.0;
 
 constexpr unsigned fftsize = 2 * 1024;
 #ifdef USE_FFTW
@@ -56,7 +56,6 @@ std::unique_ptr<kfr::u8[]> ffttemp;
 std::unique_ptr<float[]> fftin;
 std::unique_ptr<std::complex<float>[]> fftout;
 std::unique_ptr<float[]> fftwindow;
-bool fftcandraw = false;
 
 constexpr float updatedelta = 10e-3f;
 
@@ -65,17 +64,19 @@ sample_memory smem(smemsize);
 float smemtime = 0;
 
 bool enabled = false;
+bool visucandraw = false;
+void (*initfn)() = nullptr;
+void (*updatefn)() = nullptr;
 
 }  // namespace
 
-static void update_dft_data();
-static void on_fftdraw_timeout(void *);
+static void on_redraw_timeout(void *);
 static void on_fd_input(FL_SOCKET, void *);
 
 ///
 static void enable() {
   if (!::enabled) {
-    Fl::add_timeout(fftdraw_interval, &on_fftdraw_timeout);
+    Fl::add_timeout(redraw_interval, &on_redraw_timeout);
     if (arg_fd != INVALID_SOCKET)
       Fl::add_fd(arg_fd, FL_READ, &on_fd_input);
     ::enabled = true;
@@ -84,7 +85,7 @@ static void enable() {
 
 static void disable() {
   if (::enabled) {
-    Fl::remove_timeout(&on_fftdraw_timeout);
+    Fl::remove_timeout(&on_redraw_timeout);
     ::enabled = false;
   }
 }
@@ -154,8 +155,8 @@ static bool handle_message(const MessageHeader *msg) {
         smem.append(msg->f[i]);
         t += 1 / sr;
         if (t >= updatedelta) {
-          if (::enabled)
-            update_dft_data();
+          if (::enabled && ::updatefn)
+            ::updatefn();
           t -= updatedelta;
         }
       }
@@ -191,7 +192,23 @@ static float window_nutall(float r) {
   return w;
 }
 
-static void update_dft_data() {
+static void dft_init() {
+  fftin.reset(new float[fftsize]());
+  fftout.reset(new std::complex<float>[fftsize/2+1]());
+#ifdef USE_FFTW
+  fftplan.reset(fftwf_plan_dft_r2c_1d(
+      fftsize, fftin.get(), (fftwf_complex *)fftout.get(), FFTW_MEASURE));
+#else
+  fftplan.reset(new kfr::dft_plan_real<float>(fftsize));
+  ffttemp.reset(new kfr::u8[fftplan->temp_size]());
+#endif
+
+  fftwindow.reset(new float[fftsize]());
+  for (unsigned i = 0; i < fftsize; ++i)
+    fftwindow[i] = window_nutall(i / float(fftsize-1));
+}
+
+static void dft_update() {
   float *fftin = ::fftin.get();
   std::complex<float> *fftout = ::fftout.get();
   unsigned fftsize = ::fftsize;
@@ -211,19 +228,19 @@ static void update_dft_data() {
 
   W_DftVisu *dftvisu = ::dftvisu;
   dftvisu->update_data(fftout, fftsize/2+1, samplerate);
-  fftcandraw = true;
+  visucandraw = true;
 }
 
-static void on_fftdraw_timeout(void *) {
+static void on_redraw_timeout(void *) {
   if (!check_alive_parent_process())
     exit(1);
 
-  if (fftcandraw) {
+  if (visucandraw) {
     dftvisu->redraw();
-    fftcandraw = false;
+    visucandraw = false;
   }
 
-  Fl::repeat_timeout(fftdraw_interval, &on_fftdraw_timeout);
+  Fl::repeat_timeout(redraw_interval, &on_redraw_timeout);
 }
 
 static bool handle_cmdline(int argc, char *argv[]) {
@@ -296,20 +313,6 @@ int main(int argc, char *argv[]) {
     throw std::system_error(socket_errno(), socket_category());
 #endif
 
-  fftin.reset(new float[fftsize]());
-  fftout.reset(new std::complex<float>[fftsize/2+1]());
-#ifdef USE_FFTW
-  fftplan.reset(fftwf_plan_dft_r2c_1d(
-      fftsize, fftin.get(), (fftwf_complex *)fftout.get(), FFTW_MEASURE));
-#else
-  fftplan.reset(new kfr::dft_plan_real<float>(fftsize));
-  ffttemp.reset(new kfr::u8[fftplan->temp_size]());
-#endif
-
-  fftwindow.reset(new float[fftsize]());
-  for (unsigned i = 0; i < fftsize; ++i)
-    fftwindow[i] = window_nutall(i / float(fftsize-1));
-
   Fl::visual(FL_RGB);
 
   Fl_Double_Window *window = new Fl_Double_Window(1, 1, ::arg_title.c_str());
@@ -319,16 +322,23 @@ int main(int argc, char *argv[]) {
     case Visu_Waterfall: {
       window->resize(window->x(), window->y(), 1000, 400);
       ::dftvisu = new W_DftWaterfall(0, 0, window->w(), window->h());
+      ::initfn = &dft_init;
+      ::updatefn = &dft_update;
       break;
     }
     case Visu_Spectrogram: {
       window->resize(window->x(), window->y(), 1000, 200);
       ::dftvisu = new W_DftSpectrogram(0, 0, window->w(), window->h());
+      ::initfn = &dft_init;
+      ::updatefn = &dft_update;
       break;
     }
     default:
       return 1;
   }
+
+  if (::initfn)
+    ::initfn();
 
   window->end();
 
