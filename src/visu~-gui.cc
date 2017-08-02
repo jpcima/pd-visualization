@@ -1,6 +1,7 @@
 #include "visu~-common.h"
 #include "gui/w_dft_waterfall.h"
 #include "gui/w_dft_spectrogram.h"
+#include "gui/s_smem.h"
 #include "util/unix.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
@@ -60,8 +61,7 @@ bool fftcandraw = false;
 constexpr float updatedelta = 10e-3f;
 
 constexpr unsigned smemsize = fftsize;
-unsigned smemindex = 0;
-std::unique_ptr<float[]> smembuf(new float[2 * smemsize]());
+sample_memory smem(smemsize);
 float smemtime = 0;
 
 bool enabled = false;
@@ -147,12 +147,11 @@ static bool handle_message(const MessageHeader *msg) {
       break;
 
     case MessageTag_Samples: {
-      float *smembuf = ::smembuf.get();
+      sample_memory &smem = ::smem;
       const float sr = ::samplerate;
       float t = ::smemtime;
       for (unsigned i = 0, n = msg->len / sizeof(float); i < n; ++i) {
-        smembuf[smemindex] = smembuf[smemindex + smemsize] = msg->f[i];
-        smemindex = (smemindex + 1) % smemsize;
+        smem.append(msg->f[i]);
         t += 1 / sr;
         if (t >= updatedelta) {
           if (::enabled)
@@ -197,7 +196,7 @@ static void update_dft_data() {
   std::complex<float> *fftout = ::fftout.get();
   unsigned fftsize = ::fftsize;
 
-  float *smem = ::smembuf.get() + (smemindex - smemsize) % smemsize;
+  const float *smem = ::smem.data();
   for (unsigned i = 0; i < fftsize; ++i)
     fftin[i] = fftwindow[i] * smem[i];
 
