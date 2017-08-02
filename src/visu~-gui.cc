@@ -1,6 +1,7 @@
 #include "visu~-common.h"
 #include "gui/w_dft_waterfall.h"
 #include "gui/w_dft_spectrogram.h"
+#include "gui/w_ts_oscillogram.h"
 #include "gui/s_smem.h"
 #include "util/unix.h"
 #include <FL/Fl.H>
@@ -41,7 +42,7 @@ std::unique_ptr<uint8_t[]> recvbuf(new uint8_t[msgmax]);
 float samplerate = 44100;
 
 Fl_Double_Window *window = nullptr;
-W_DftVisu *dftvisu = nullptr;
+W_Visu *visu = nullptr;
 
 constexpr double redraw_interval = 1 / 24.0;
 
@@ -59,8 +60,7 @@ std::unique_ptr<float[]> fftwindow;
 
 constexpr float updatedelta = 10e-3f;
 
-constexpr unsigned smemsize = fftsize;
-sample_memory smem(smemsize);
+sample_memory smem;
 float smemtime = 0;
 
 bool enabled = false;
@@ -140,7 +140,7 @@ static bool handle_message(const MessageHeader *msg) {
       if (window->shown()) {
         disable();
         window->hide();
-        ::dftvisu->reset_data();
+        ::visu->reset_data();
       } else {
         enable();
         window->show();
@@ -193,6 +193,8 @@ static float window_nutall(float r) {
 }
 
 static void dft_init() {
+  smem.resize(fftsize);
+
   fftin.reset(new float[fftsize]());
   fftout.reset(new std::complex<float>[fftsize/2+1]());
 #ifdef USE_FFTW
@@ -226,8 +228,22 @@ static void dft_update() {
   for (unsigned i = 0; i < fftsize/2+1; ++i)
     fftout[i] /= fftsize;
 
-  W_DftVisu *dftvisu = ::dftvisu;
-  dftvisu->update_data(fftout, fftsize/2+1, samplerate);
+  W_DftVisu *dftvisu = static_cast<W_DftVisu *>(::visu);
+  dftvisu->update_dft_data(fftout, fftsize/2+1, samplerate);
+  visucandraw = true;
+}
+
+static void ts_init() {
+  constexpr float sampleratemax = 192000;
+  constexpr float timebasemax = 1.0;
+  unsigned memsize = std::ceil(timebasemax * sampleratemax);
+  smem.resize(memsize);
+}
+
+static void ts_update() {
+  const sample_memory &smem = ::smem;
+  W_TsVisu *tsvisu = static_cast<W_TsVisu *>(::visu);
+  tsvisu->update_ts_data(samplerate, smem.data(), smem.size());
   visucandraw = true;
 }
 
@@ -236,7 +252,7 @@ static void on_redraw_timeout(void *) {
     exit(1);
 
   if (visucandraw) {
-    dftvisu->redraw();
+    visu->redraw();
     visucandraw = false;
   }
 
@@ -321,16 +337,23 @@ int main(int argc, char *argv[]) {
   switch (::arg_visu) {
     case Visu_Waterfall: {
       window->resize(window->x(), window->y(), 1000, 400);
-      ::dftvisu = new W_DftWaterfall(0, 0, window->w(), window->h());
+      ::visu = new W_DftWaterfall(0, 0, window->w(), window->h());
       ::initfn = &dft_init;
       ::updatefn = &dft_update;
       break;
     }
     case Visu_Spectrogram: {
       window->resize(window->x(), window->y(), 1000, 200);
-      ::dftvisu = new W_DftSpectrogram(0, 0, window->w(), window->h());
+      ::visu = new W_DftSpectrogram(0, 0, window->w(), window->h());
       ::initfn = &dft_init;
       ::updatefn = &dft_update;
+      break;
+    }
+    case Visu_Oscillogram: {
+      window->resize(window->x(), window->y(), 1000, 200);
+      ::visu = new W_TsOscillogram(0, 0, window->w(), window->h());
+      ::initfn = &ts_init;
+      ::updatefn = &ts_update;
       break;
     }
     default:

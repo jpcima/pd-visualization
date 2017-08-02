@@ -79,7 +79,7 @@ W_DftWaterfall::W_DftWaterfall(int x, int y, int w, int h)
 W_DftWaterfall::~W_DftWaterfall() {
 }
 
-void W_DftWaterfall::update_data(
+void W_DftWaterfall::update_dft_data(
     const std::complex<float> *spec, unsigned n, float fs) {
   float nyq = fs/2;
   float dbmin = P->dbmin;

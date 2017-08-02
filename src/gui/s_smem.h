@@ -19,7 +19,7 @@ class sample_memory {
   }
 
   const float *data() const {
-    unsigned readindex = (writeindex_ - bufsize_) % bufsize_;
+    unsigned readindex = writeindex_;
     return buf_.get() + readindex;
   }
 

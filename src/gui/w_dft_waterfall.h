@@ -7,7 +7,7 @@ class W_DftWaterfall : public W_DftVisu {
   W_DftWaterfall(int x, int y, int w, int h);
   ~W_DftWaterfall();
 
-  void update_data(
+  void update_dft_data(
       const std::complex<float> *spec, unsigned n, float fs) override;
   void reset_data() override;
 

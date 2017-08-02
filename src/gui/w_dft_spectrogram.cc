@@ -68,7 +68,7 @@ W_DftSpectrogram::W_DftSpectrogram(int x, int y, int w, int h)
 W_DftSpectrogram::~W_DftSpectrogram() {
 }
 
-void W_DftSpectrogram::update_data(
+void W_DftSpectrogram::update_dft_data(
     const std::complex<float> *spec, unsigned n, float fs) {
   float nyq = fs/2;
   float dbmin = P->dbmin;

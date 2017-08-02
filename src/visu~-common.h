@@ -26,6 +26,7 @@ struct MessageHeader {
 enum VisuType {
   Visu_Waterfall,
   Visu_Spectrogram,
+  Visu_Oscillogram,
   Visu_Default = Visu_Waterfall,
 };
 
