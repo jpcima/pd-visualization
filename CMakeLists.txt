@@ -78,6 +78,15 @@ target_link_libraries(sgvisu_tilde visu_common ${CMAKE_THREAD_LIBS_INIT})
 add_pd_external(ogvisu_tilde "ogvisu~" src/ogvisu~.cc)
 target_link_libraries(ogvisu_tilde visu_common ${CMAKE_THREAD_LIBS_INIT})
 
+###
+
+add_library(Fl_Knob STATIC
+  thirdparty/Fl_Knob/Fl_Knob/Fl_Knob.cxx)
+target_include_directories(Fl_Knob
+  PUBLIC thirdparty/Fl_Knob
+  PUBLIC ${FLTK_INCLUDE_DIRS})
+target_link_libraries(Fl_Knob ${PROJECT_FLTK_LIBRARIES})
+
 set(visu_gui_SOURCES
   src/visu~-gui.cc
   src/gui/w_dft_spectrogram.cc
@@ -99,7 +108,7 @@ target_include_directories(visu_gui
   PRIVATE src
   PRIVATE thirdparty/color/src
   PRIVATE ${FLTK_INCLUDE_DIRS})
-target_link_libraries(visu_gui ${PROJECT_FLTK_LIBRARIES})
+target_link_libraries(visu_gui Fl_Knob ${PROJECT_FLTK_LIBRARIES})
 if(LINK_STATICALLY)
   target_static_link(visu_gui)
 endif()

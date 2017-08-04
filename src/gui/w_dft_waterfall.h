@@ -13,6 +13,7 @@ class W_DftWaterfall : public W_DftVisu {
 
   void draw() override;
   int handle(int event) override;
+  void resize(int x, int y, int w, int h) override;
 
  private:
   struct Impl;

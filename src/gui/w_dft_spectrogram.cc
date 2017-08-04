@@ -3,21 +3,24 @@
 #include <FL/Fl_Box.H>
 #include <FL/fl_draw.H>
 #include <color/color.hpp>
-#include <memory>
+#include <algorithm>
+#include <vector>
 #include <cmath>
 #include <stdint.h>
 #include <string.h>
 
 struct W_DftSpectrogram::Impl {
+  W_DftSpectrogram *Q = nullptr;
+
   float fsref = 44100;
 
-  int x {}, y {}, w {}, h {};
   int mx = -1, my = -1;
 
-  std::unique_ptr<float[]> dispvalues;
+  std::vector<std::complex<float>> spec;
 
   Fl_Box *rulertop = nullptr;
   Fl_Box *rulerbtm = nullptr;
+  Fl_Box *screen = nullptr;
 
   float dbmin = -140;
   float dbmax = +0;
@@ -27,8 +30,6 @@ struct W_DftSpectrogram::Impl {
   void draw_back();
   void draw_data();
   void draw_pointer(int x, int y);
-
-  void screen_dims(int *px, int *py, int *pw, int *ph);
 };
 
 // margins
@@ -38,31 +39,32 @@ static constexpr int mh = 20;
 W_DftSpectrogram::W_DftSpectrogram(int x, int y, int w, int h)
     : W_DftVisu(x, y, w, h),
       P(new Impl) {
-  P->x = x;
-  P->y = y;
-  P->w = w;
-  P->h = h;
+  P->Q = this;
+
+  int sx = x;
+  int sy = y;
+  int sw = w;
+  int sh = h;
 
   bool b_rulertop = true;
   bool b_rulerbtm = true;
 
-  this->begin();
-
   if (b_rulertop) {
-    P->rulertop = new Fl_Box(0, 0, w, mh, "");
+    P->rulertop = new Fl_Box(x, y, w, mh, "");
     P->rulertop->box(FL_UP_BOX);
+    sy += mh;
+    sh -= std::min(sh, mh);
   }
   if (b_rulerbtm) {
-    P->rulerbtm = new Fl_Box(0, h-mh, w, mh, "");
+    P->rulerbtm = new Fl_Box(x, y+h-mh, w, mh, "");
     P->rulerbtm->box(FL_UP_BOX);
+    sh -= std::min(sh, mh);
   }
 
+  P->screen = new Fl_Box(sx, sy, sw, sh);
+  this->resizable(P->screen);
+
   this->end();
-
-  int dw;
-  P->screen_dims(nullptr, nullptr, &dw, nullptr);
-
-  P->dispvalues.reset(new float[dw]());
 }
 
 W_DftSpectrogram::~W_DftSpectrogram() {
@@ -70,35 +72,11 @@ W_DftSpectrogram::~W_DftSpectrogram() {
 
 void W_DftSpectrogram::update_dft_data(
     const std::complex<float> *spec, unsigned n, float fs) {
-  float nyq = fs/2;
-  float dbmin = P->dbmin;
-  float dbmax = P->dbmax;
-
-  int w, h;
-  P->screen_dims(0, 0, &w, &h);
-
-  float *dispvalues = P->dispvalues.get();
-
-  for (int i = 0; i < w; ++i) {
-    float rx = i / float(w-1);
-    int speci = std::lrint(rx * (n-1));
-
-    // no interpolation
-    float a = std::abs(spec[speci]);
-
-    float g = (a > 0.0f) ? (20 * std::log10(a)) : dbmin;
-
-    // value display
-    float dv = (g - dbmin) / (dbmax - dbmin);
-
-    dispvalues[i] = dv;
-  }
+  P->spec.assign(spec, spec + n);
 }
 
 void W_DftSpectrogram::reset_data() {
-  int dw;
-  P->screen_dims(nullptr, nullptr, &dw, nullptr);
-  memset(P->dispvalues.get(), 0, dw * sizeof(P->dispvalues[0]));
+  P->spec.clear();
 }
 
 void W_DftSpectrogram::draw() {
@@ -106,17 +84,21 @@ void W_DftSpectrogram::draw() {
   //
   P->draw_rulers();
   //
-  int x, y, w, h;
-  P->screen_dims(&x, &y, &w, &h);
-  fl_push_clip(x, y, w, h);
-  P->draw_back();
-  P->draw_data();
-  //
-  int mx = P->mx;
-  int my = P->my;
-  if (mx >= x && mx < x+w && my >= y && my < y+h)
-    P->draw_pointer(mx, my);
-  fl_pop_clip();
+  int sx = P->screen->x();
+  int sy = P->screen->y();
+  int sw = P->screen->w();
+  int sh = P->screen->h();
+  if (sw > 0 && sh > 0) {
+    fl_push_clip(sx, sy, sw, sh);
+    P->draw_back();
+    P->draw_data();
+    //
+    int mx = P->mx;
+    int my = P->my;
+    if (mx >= sx && mx < sx+sw && my >= sy && my < sy+sh)
+      P->draw_pointer(mx, my);
+    fl_pop_clip();
+  }
 }
 
 int W_DftSpectrogram::handle(int event) {
@@ -142,10 +124,10 @@ int W_DftSpectrogram::handle(int event) {
 }
 
 void W_DftSpectrogram::Impl::draw_rulers() {
-  int x = this->x;
-  int y = this->y;
-  int w = this->w;
-  int h = this->h;
+  int x = Q->x();
+  int y = Q->y();
+  int w = Q->w();
+  int h = Q->h();
 
   fl_color(0, 0, 0);
 
@@ -180,11 +162,13 @@ void W_DftSpectrogram::Impl::draw_rulers() {
 }
 
 void W_DftSpectrogram::Impl::draw_back() {
-  int x, y, w, h;
-  screen_dims(&x, &y, &w, &h);
+  int sx = this->screen->x();
+  int sy = this->screen->y();
+  int sw = this->screen->w();
+  int sh = this->screen->h();
 
   fl_color(0, 0, 0);
-  fl_rectf(x, y, w, h);
+  fl_rectf(sx, sy, sw, sh);
 
   float f_nyq = this->fsref / 2;
   float f_interval = 1000;
@@ -194,9 +178,9 @@ void W_DftSpectrogram::Impl::draw_back() {
     float f = f_interval * i;
     if (f > f_nyq)
       break;
-    int xf = x + (w-1) * f / f_nyq;
+    int xf = sx + (sw-1) * f / f_nyq;
     fl_color(50, 50, 50);
-    fl_line(xf, y, xf, y+h-1);
+    fl_line(xf, sy, xf, sy+sh-1);
     lastx = xf;
   }
 
@@ -209,9 +193,9 @@ void W_DftSpectrogram::Impl::draw_back() {
     if (g > dbmax)
       break;
     float dv = (g - dbmin) / (dbmax - dbmin);
-    int yg = y + (1-dv) * (h-1);
+    int yg = sy + (1-dv) * (sh-1);
     fl_color(50, 50, 50);
-    fl_line(x, yg, x+w-1, yg);
+    fl_line(sx, yg, sx+sw-1, yg);
 
     char textbuf[16];
     snprintf(textbuf, sizeof(textbuf), "%g dB", g);
@@ -220,45 +204,56 @@ void W_DftSpectrogram::Impl::draw_back() {
     fl_font(FL_COURIER, 10);
     fl_color(200, 200, 200);
     fl_draw(textbuf, lastx-2, yg, 0, 0, FL_ALIGN_RIGHT|FL_ALIGN_BOTTOM, nullptr, 0);
-    fl_draw(textbuf, x+2, yg, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_BOTTOM, nullptr, 0);
+    fl_draw(textbuf, sx+2, yg, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_BOTTOM, nullptr, 0);
   }
 }
 
 void W_DftSpectrogram::Impl::draw_data() {
-  int x, y, w, h;
-  screen_dims(&x, &y, &w, &h);
-  float *dispvalues = this->dispvalues.get();
+  int sw = this->screen->w();
+  int sh = this->screen->h();
 
-  fl_push_clip(x, y, w, h);
+  const std::complex<float> *spec = this->spec.data();
+  unsigned specn = this->spec.size();
+  if (specn == 0)
+    return;
+
   fl_color(51, 204, 179);
 
   int lasty {};
-  for (int i = 0; i < w; ++i) {
-    float v = dispvalues[i];
-    int newy = (1-v)*(h-1);
+  for (int i = 0; i < sw; ++i) {
+    float rx = i / float(sw-1);
+
+    // no interpolation
+    int speci = std::lrint(rx * (specn-1));
+    float a = std::abs(spec[speci]);
+
+    float g = (a > 0.0f) ? (20 * std::log10(a)) : dbmin;
+    float dv = (g - dbmin) / (dbmax - dbmin);
+
+    int newy = (1-dv)*(sh-1);
     if (i > 0)
       fl_line(i-1, lasty, i, newy);
     lasty = newy;
   }
-
-  fl_pop_clip();
 }
 
 void W_DftSpectrogram::Impl::draw_pointer(int mx, int my) {
-  int x, y, w, h;
-  this->screen_dims(&x, &y, &w, &h);
+  int sx = this->screen->x();
+  int sy = this->screen->y();
+  int sw = this->screen->w();
+  int sh = this->screen->h();
 
   float f_nyq = this->fsref / 2;
-  float f = mx * f_nyq / (w-1);
+  float f = (mx-sx) * f_nyq / (sw-1);
 
   float dbmin = this->dbmin;
   float dbmax = this->dbmax;
-  float dv = 1-float(my-y)/(h-1);
+  float dv = 1-float(my-sy)/(sh-1);
   float g = dbmin + dv * (dbmax - dbmin);
 
   fl_color(150, 150, 150);
-  fl_line(mx, y, mx, y+h-1);
-  fl_line(x, my, x+w-1, my);
+  fl_line(mx, sy, mx, sy+sh-1);
+  fl_line(sx, my, sx+sw-1, my);
 
   char textbuf[64];
   snprintf(textbuf, sizeof(textbuf), "%.2f Hz %.2f dB", f, g);
@@ -267,32 +262,12 @@ void W_DftSpectrogram::Impl::draw_pointer(int mx, int my) {
   fl_font(FL_COURIER, 12);
   int tw = 8+std::ceil(fl_width("00000.00 Hz -000.00 dB"));
   int th = 16;
-  int tx = x+w-1-tw-4;
-  int ty = y+4;
+  int tx = sx+sw-1-tw-4;
+  int ty = sy+4;
   int tal = FL_ALIGN_LEFT|FL_ALIGN_CENTER;
   fl_color(50, 50, 50);
   fl_rectf(tx, ty, tw, th);
   fl_color(200, 200, 200);
   fl_rect(tx, ty, tw, th);
   fl_draw(textbuf, tx+4, ty, tw, th, tal, nullptr, 0);
-}
-
-void W_DftSpectrogram::Impl::screen_dims(int *px, int *py, int *pw, int *ph) {
-  int x = this->x;
-  int y = this->y;
-  int w = this->w;
-  int h = this->h;
-  // remove top margin
-  if (this->rulertop) {
-    y += mh;
-    h -= mh;
-  }
-  // remove bottom margin
-  if (this->rulerbtm) {
-    h -= mh;
-  }
-  if (px) *px = x;
-  if (py) *py = y;
-  if (pw) *pw = w;
-  if (ph) *ph = h;
 }

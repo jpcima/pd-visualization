@@ -1,0 +1,97 @@
+# data file for the Fltk User Interface Designer (fluid)
+version 1.0010 
+header_name {.h} 
+code_name {.cxx} 
+gridx 1 
+gridy 1 
+snap 3
+decl {\#include "Fl_Knob.H"} {public
+} 
+
+decl {\#include <math.h>} {} 
+
+Function {main(int ac,char **av)} {open return_type int
+} {
+  code {make_window();
+Fl::run();} {}
+} 
+
+Function {make_window()} {open
+} {
+  Fl_Window {} {open selected
+    xywh {358 376 274 211} labelsize 10 hide
+    code0 {o->show();}
+  } {
+    Fl_Dial v1 {
+      label {Fl_Knob::LINELOG_1}
+      callback {o1->value(pow(10,v1->value()));}
+      xywh {20 12 55 58} color 10 selection_color 1 labelsize 9 step 0.001
+      code0 {o->type(Fl_Knob::LINELOG_1);}
+      class Fl_Knob
+    }
+    Fl_Value_Output o1 {
+      xywh {30 85 40 15} minimum 1 maximum 10 step 0.01 value 1 textsize 9
+    }
+    Fl_Group {} {open
+      xywh {95 0 175 105} box FLAT_BOX color 147
+    } {
+      Fl_Dial v2 {
+        label {Fl_Knob::LINELOG_2}
+        callback {o2->value(pow(10.0,v2->value()));}
+        xywh {110 15 55 56} labelsize 9 labelcolor 7 align 1 maximum 2 step 0.001
+        code0 {o->type(Fl_Knob::LINELOG_2);}
+        class Fl_Knob
+      }
+      Fl_Dial v3 {
+        label {Fl_Knob::DOTLOG_3}
+        callback {o3->value(pow(10.0,v3->value()));}
+        xywh {195 15 55 55} color 37 selection_color 7 labelsize 9 labelcolor 7 maximum 3 step 0.01
+        code0 {o->type(Fl_Knob::DOTLOG_3);}
+        class Fl_Knob
+      }
+      Fl_Value_Output o2 {
+        xywh {120 85 35 15} minimum 1 maximum 100 step 0.05 value 1 textsize 9
+      }
+      Fl_Value_Output o3 {
+        xywh {205 85 40 15} minimum 1 maximum 1000 step 0.1 value 1 textsize 9
+      }
+    }
+    Fl_Dial v4 {
+      label {Num. of Ticks-->}
+      callback {o4->value(v4->value());
+v5->scaleticks((int)(v4->value()));}
+      xywh {20 116 55 59} color 230 selection_color 1 labelsize 9 maximum 31 step 1
+      code0 {o->type(Fl_Knob::LINELIN);}
+      class Fl_Knob
+    }
+    Fl_Value_Output o4 {
+      xywh {30 190 35 15} maximum 100 step 0.01 textsize 9
+    }
+    Fl_Group {} {open
+      xywh {95 110 175 100} box ENGRAVED_BOX color 246
+    } {
+      Fl_Dial v5 {
+        label {<--Cursor size-->}
+        callback {o5->value(v5->value());
+v4->cursor(v5->value());
+v6->cursor(v5->value());}
+        xywh {110 120 55 55} labelsize 9 maximum 100 step 1 value 20
+        code0 {o->type(Fl_Knob::DOTLIN);}
+        class Fl_Knob
+      }
+      Fl_Dial v6 {
+        label {Knob::DOTLOG_3}
+        callback {o6->value(pow(10.0,v6->value()));}
+        xywh {195 120 55 55} labelsize 9 maximum 3 step 0.01
+        code0 {o->type(Fl_Knob::DOTLOG_3);}
+        class Fl_Knob
+      }
+      Fl_Value_Output o5 {
+        xywh {120 190 35 15} maximum 10 step 0.1 textsize 9
+      }
+      Fl_Value_Output o6 {
+        xywh {210 190 35 15} minimum 1 maximum 1000 step 0.1 value 1 textsize 9
+      }
+    }
+  }
+} 

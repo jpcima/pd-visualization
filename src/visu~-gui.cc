@@ -3,6 +3,7 @@
 #include "gui/w_dft_spectrogram.h"
 #include "gui/w_ts_oscillogram.h"
 #include "gui/s_smem.h"
+#include "gui/s_math.h"
 #include "util/unix.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
@@ -183,15 +184,6 @@ static void on_fd_input(FL_SOCKET, void *) {
   }
 }
 
-static float window_nutall(float r) {
-  const std::array<float, 4> a {0.355768, -0.487396, 0.144232, -0.012604};
-  float p = r * 2 * float(M_PI);
-  float w = a[0];
-  for (unsigned i = 1; i < a.size(); ++i)
-    w += a[i] * std::cos(i * p);
-  return w;
-}
-
 static void dft_init() {
   smem.resize(fftsize);
 
@@ -279,7 +271,7 @@ static bool handle_cmdline(int argc, char *argv[]) {
       }
       case 256 + 'p': {
         unsigned len = 0;
-#ifdef WIN32_
+#ifdef _WIN32
         unsigned count = sscanf(optarg, "%lu%n", &::arg_ppid, &len);
 #else
         unsigned count = sscanf(optarg, "%d%n", &::arg_ppid, &len);
@@ -331,27 +323,35 @@ int main(int argc, char *argv[]) {
 
   Fl::visual(FL_RGB);
 
-  Fl_Double_Window *window = new Fl_Double_Window(1, 1, ::arg_title.c_str());
+  int w = 1, h = 1;
+
+  Fl_Double_Window *window = new Fl_Double_Window(w, h, ::arg_title.c_str());
   ::window = window;
 
   switch (::arg_visu) {
     case Visu_Waterfall: {
-      window->resize(window->x(), window->y(), 1000, 400);
-      ::visu = new W_DftWaterfall(0, 0, window->w(), window->h());
+      w = 1000;
+      h = 400;
+      window->size(w, h);
+      ::visu = new W_DftWaterfall(0, 0, w, h);
       ::initfn = &dft_init;
       ::updatefn = &dft_update;
       break;
     }
     case Visu_Spectrogram: {
-      window->resize(window->x(), window->y(), 1000, 200);
-      ::visu = new W_DftSpectrogram(0, 0, window->w(), window->h());
+      w = 1000;
+      h = 200;
+      window->size(w, h);
+      ::visu = new W_DftSpectrogram(0, 0, w, h);
       ::initfn = &dft_init;
       ::updatefn = &dft_update;
       break;
     }
     case Visu_Oscillogram: {
-      window->resize(window->x(), window->y(), 1000, 200);
-      ::visu = new W_TsOscillogram(0, 0, window->w(), window->h());
+      w = 1000;
+      h = 300;
+      window->size(w, h);
+      ::visu = new W_TsOscillogram(0, 0, w, h);
       ::initfn = &ts_init;
       ::updatefn = &ts_update;
       break;
@@ -359,6 +359,9 @@ int main(int argc, char *argv[]) {
     default:
       return 1;
   }
+
+  window->resizable(::visu);
+  window->size_range(w / 10, h / 10);
 
   if (::initfn)
     ::initfn();

@@ -11,8 +11,7 @@ class W_TsOscillogram : public W_TsVisu {
       float sr, const float *smps, unsigned len) override;
   void reset_data() override;
 
-  void draw() override;
-  int handle(int event) override;
+  void resize(int x, int y, int w, int h) override;
 
  private:
   struct Impl;
