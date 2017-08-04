@@ -3,9 +3,11 @@
 #include "s_math.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
+#include <FL/Fl_Choice.H>
 #include <Fl_Knob/Fl_Knob.H>
 #include <FL/fl_draw.H>
 #include <vector>
+#include <cmath>
 
 struct W_TsOscillogram::Impl {
   W_TsOscillogram *Q = nullptr;
@@ -15,10 +17,13 @@ struct W_TsOscillogram::Impl {
   float samplerate = 44100;
   float period = 100e-3;
   float scale = 1;
-  float yoff = 0;
+  float yoff = 0;  // -1..1
+  float xtrig = 0;  // 0..1
+  float ytrig = 0;  // -1..1
+  int trigmode = 0;
 
-  static constexpr float periodmin = 1e-3;
-  static constexpr float periodmax = 1;
+  // static constexpr float periodmin = 1e-2;
+  // static constexpr float periodmax = 1;
 
   static constexpr float scalemin = 0.4;
   static constexpr float scalemax = 4;
@@ -34,6 +39,9 @@ struct W_TsOscillogram::Impl {
   void changed_tb(float val);
   void changed_sc(float val);
   void changed_yoff(float val);
+  void changed_xtrig(float val);
+  void changed_ytrig(float val);
+  void changed_trigmode(int val);
 
   class Screen;
   Screen *screen = nullptr;
@@ -134,6 +142,7 @@ void W_TsOscillogram::Impl::Screen::draw_back() {
   float tb = P->period;
   float sc = P->scale;
   float yoff = P->yoff;
+  int trigmode = P->trigmode;
 
   fl_color(0, 0, 0);
   fl_rectf(sx, sy, sw, sh);
@@ -166,6 +175,16 @@ void W_TsOscillogram::Impl::Screen::draw_back() {
     fl_line(xi, sy, xi, sy+sh-1);
   }
 
+  if (trigmode != 0) {
+    fl_color(0, 150, 0);
+    float xtrig = P->xtrig;
+    int xt = sx + (sw-1) * xtrig;
+    fl_line(xt, sy, xt, sy+sh-1);
+    float ytrig = P->ytrig;
+    int yt = sy + (sh-1) * (-ytrig + 1) / 2;
+    fl_line(sx, yt, sx+sw-1, yt);
+  }
+
   fl_font(FL_COURIER, 12);
   fl_color(200, 200, 200);
 
@@ -194,26 +213,56 @@ void W_TsOscillogram::Impl::Screen::draw_data() {
   if (n == 0)
     return;
 
+  auto safe_data = [p, n](int idx) {
+    return idx < 0 || (unsigned(idx) >= n) ? 0 : p[idx]; };
+
   fl_color(255, 0, 0);
 
   float sr = P->samplerate;
   float tb = P->period;
   float sc = P->scale;
   float yoff = P->yoff;
+  float xtrig = P->xtrig;
+  float ytrig = P->ytrig;
 
-  int xi {}, yi {};
+  int trigmode = P->trigmode;
+  bool trigup = trigmode & 1;
+  bool trigdown = trigmode & 2;
+
+  int xi {};
+  int yi {};
+  float idf0 = n - 1 - tb * sr;
+
+  bool trigd = false;
+  if (trigmode != 0) {
+    float ylevel = (ytrig - yoff) / sc;
+    float xdelta = xtrig * tb * sr;
+    int idt = idf0 + xdelta;
+    float y1 = safe_data(idt + 1);
+    float y2 {};
+    for (; idt >= 0 && !trigd; --idt) {
+      y2 = y1;
+      y1 = safe_data(idt);
+      if ((trigup && y1 <= ylevel && y2 >= ylevel) ||
+          (trigdown && y1 >= ylevel && y2 <= ylevel)) {
+        float frac = (ylevel - y1) / (y2 - y1);
+        idf0 = idt - xdelta + frac;
+        trigd = true;
+      }
+    }
+  }
 
   for (int i = 0; i < sw; ++i) {
-    float r = float(sw-1-i) / (sw-1);
-    float idf = (n - 1) - r * tb * sr;
+    float r = i / float(sw-1);
+    float idf = idf0 + r * tb * sr;
 
-    int id0 = idf;
-    float mu = idf - id0;
+    int idx = idf;
+    float mu = idf - idx;
 
     constexpr int nsmp = 4;
     float ismp[nsmp];
     for (int i = 0; i < nsmp; ++i)
-      ismp[i] = (id0 + i < 0 || unsigned(id0 + i) >= n) ? 0 : p[id0 + i];
+      ismp[i] = safe_data(idx + i);
 
     // float smp = interp_linear(ismp, mu);
     float smp = interp_catmull(ismp, mu);
@@ -225,6 +274,25 @@ void W_TsOscillogram::Impl::Screen::draw_data() {
 
     if (i > 0)
       fl_line(oldxi, oldyi, xi, yi);
+  }
+
+  if (trigmode != 0) {
+    const char textbuf[] = "Trig";
+    fl_font(FL_COURIER, 12);
+    int tw = 8+std::ceil(fl_width(textbuf));
+    int th = 16;
+    int tx = sx+sw-1-tw-150;
+    int ty = sy+4;
+    int tal = FL_ALIGN_LEFT|FL_ALIGN_CENTER;
+    fl_color(50, 50, 50);
+    fl_rectf(tx, ty, tw, th);
+    fl_color(200, 200, 200);
+    fl_rect(tx, ty, tw, th);
+    if (trigd)
+      fl_color(0, 250, 0);
+    else
+      fl_color(0, 150, 0);
+    fl_draw(textbuf, tx + 4, ty, tw, th, tal, nullptr, 0);
   }
 }
 
@@ -276,33 +344,93 @@ void W_TsOscillogram::Impl::create_controls() {
   Fl_Group *grpctl = this->grpctl = new Fl_Group(0, 0, 1, mh);
   grpctl->begin();
   grpctl->resizable(nullptr);
-  grpctl->box(FL_ENGRAVED_BOX);
-  grpctl->color(246);
 
   int interx = 8;
-  int curx = interx;
+  int curx = 0;
 
-  Fl_Knob *valtb = new Fl_Knob(curx, 15, 40, 40, "T. base");
-  valtb->labelsize(10);
-  valtb->align(FL_ALIGN_TOP);
-  valtb->value(this->period / this->periodmax);
-  VALUE_CALLBACK(valtb, this, changed_tb);
-  curx += valtb->w() + interx;
+  Fl_Group *box {};
+  Fl_Knob *knob {};
+  Fl_Choice *choice {};
 
-  Fl_Knob *valsc = new Fl_Knob(curx, 15, 40, 40, "Y. scale");
-  valsc->labelsize(10);
-  valsc->align(FL_ALIGN_TOP);
-  valsc->value(this->scale / this->scalemax);
-  VALUE_CALLBACK(valsc, this, changed_sc);
-  curx += valsc->w() + interx;
+  int knobw = 42;
+  int knobh = 42;
 
-  Fl_Knob *valyoff = new Fl_Knob(curx, 15, 40, 40, "Y. offset");
-  valyoff->labelsize(10);
-  valyoff->align(FL_ALIGN_TOP);
-  valyoff->range(-1, +1);
-  valyoff->value(this->yoff);
-  VALUE_CALLBACK(valyoff, this, changed_yoff);
-  curx += valyoff->w() + interx;
+  box = new Fl_Group(0, 0, 1, mh);
+  box->begin();
+  box->resizable(nullptr);
+  box->color(fl_rgb_color(191, 218, 255));
+  box->box(FL_ENGRAVED_BOX);
+  curx += interx;
+
+  knob = new Fl_Knob(curx, 15, knobw, knobh, "X. period");
+  knob->type(Fl_Knob::LINELOG_3);
+  knob->labelsize(10);
+  knob->align(FL_ALIGN_TOP);
+  // knob->value(this->period / this->periodmax);
+  knob->value((std::log10(this->period) + 2) / 2);
+  VALUE_CALLBACK(knob, this, changed_tb);
+  curx += knob->w() + interx;
+
+  knob = new Fl_Knob(curx, 15, knobw, knobh, "Y. scale");
+  knob->type(Fl_Knob::LINELIN);
+  knob->labelsize(10);
+  knob->align(FL_ALIGN_TOP);
+  knob->value(this->scale / this->scalemax);
+  VALUE_CALLBACK(knob, this, changed_sc);
+  curx += knob->w() + interx;
+
+  knob = new Fl_Knob(curx, 15, knobw, knobh, "Y. offset");
+  knob->type(Fl_Knob::LINELIN);
+  knob->labelsize(10);
+  knob->align(FL_ALIGN_TOP);
+  knob->range(-1, +1);
+  knob->value(this->yoff);
+  VALUE_CALLBACK(knob, this, changed_yoff);
+  curx += knob->w() + interx;
+
+  box->size(curx - box->x(), mh);
+  box->end();
+
+  box = new Fl_Group(curx, 0, 1, mh);
+  box->begin();
+  box->resizable(nullptr);
+  box->color(fl_rgb_color(226, 189, 255));
+  box->box(FL_ENGRAVED_BOX);
+  curx += interx;
+
+  knob = new Fl_Knob(curx, 15, knobw, knobh, "X. trig");
+  knob->type(Fl_Knob::LINELIN);
+  knob->labelsize(10);
+  knob->align(FL_ALIGN_TOP);
+  knob->value(this->xtrig);
+  VALUE_CALLBACK(knob, this, changed_xtrig);
+  curx += knob->w() + interx;
+
+  knob = new Fl_Knob(curx, 15, knobw, knobh, "Y. trig");
+  knob->type(Fl_Knob::LINELIN);
+  knob->labelsize(10);
+  knob->align(FL_ALIGN_TOP);
+  knob->range(-1, +1);
+  knob->value(this->ytrig);
+  VALUE_CALLBACK(knob, this, changed_ytrig);
+  curx += knob->w() + interx;
+
+  choice = new Fl_Choice(curx, 15, 65, knobh, "Trig. mode");
+  choice->labelsize(10);
+  choice->align(FL_ALIGN_TOP);
+  choice->textfont(FL_COURIER);
+  choice->textsize(12);
+  choice->add("None");
+  choice->add("Up");
+  choice->add("Down");
+  choice->add("Both");
+  choice->value(this->trigmode);
+  VALUE_CALLBACK(choice, this, changed_trigmode);
+  curx += choice->w() + interx;
+#warning TODO
+
+  box->size(curx - box->x(), mh);
+  box->end();
 
   int grpw = this->grpw = curx;
   int grph = this->grph = mh;
@@ -320,7 +448,8 @@ void W_TsOscillogram::Impl::reposition_controls() {
 }
 
 void W_TsOscillogram::Impl::changed_tb(float val) {
-  float tb = clamp(val * this->periodmax, this->periodmin, this->periodmax);
+  // float tb = clamp(val * this->periodmax, this->periodmin, this->periodmax);
+  float tb = std::pow(10.0f, -2 + 2 * val);
   this->period = tb;
   Q->redraw();
 }
@@ -333,5 +462,20 @@ void W_TsOscillogram::Impl::changed_sc(float val) {
 
 void W_TsOscillogram::Impl::changed_yoff(float val) {
   this->yoff = val;
+  Q->redraw();
+}
+
+void W_TsOscillogram::Impl::changed_xtrig(float val) {
+  this->xtrig = val;
+  Q->redraw();
+}
+
+void W_TsOscillogram::Impl::changed_ytrig(float val) {
+  this->ytrig = val;
+  Q->redraw();
+}
+
+void W_TsOscillogram::Impl::changed_trigmode(int val) {
+  this->trigmode = val;
   Q->redraw();
 }
