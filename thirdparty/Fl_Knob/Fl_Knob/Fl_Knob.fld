@@ -27,8 +27,8 @@ class Fl_Knob {open : {public Fl_Valuator}
 	_percent = 0.3;
 	_scaleticks = 10;} {}
   }
-  Function {~Fl_Knob()} {} {}
-  Function {draw()} {open private
+  Function {virtual ~Fl_Knob()} {} {}
+  Function {draw()} {open protected
   } {
     code {int ox,oy,ww,hh,side;
 float sa,ca,a_r;
@@ -113,7 +113,7 @@ unsigned char rr,gg,bb;
 	fl_pop_clip();} {selected
     }
   }
-  Function {handle(int  event)} {private return_type int
+  Function {handle(int  event)} {protected return_type int
   } {
     code {int ox,oy,ww,hh;
 

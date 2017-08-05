@@ -15,8 +15,8 @@ private:
   short a1,a2;
 public:
   Fl_Knob(int xx,int yy,int ww,int hh,const char *l=0);
-  ~Fl_Knob();
-private:
+  virtual ~Fl_Knob();
+protected:
   void draw();
   int handle(int  event);
 public:

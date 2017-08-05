@@ -91,7 +91,8 @@ set(visu_gui_SOURCES
   src/visu~-gui.cc
   src/gui/w_dft_spectrogram.cc
   src/gui/w_dft_waterfall.cc
-  src/gui/w_ts_oscillogram.cc)
+  src/gui/w_ts_oscillogram.cc
+  src/gui/fl_widgets_ex.cc)
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
   set(visu_gui_SOURCES ${visu_gui_SOURCES}
     src/util/win32_argv.cc

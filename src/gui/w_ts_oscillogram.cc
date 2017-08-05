@@ -1,10 +1,11 @@
 #include "w_ts_oscillogram.h"
+#include "fl_widgets_ex.h"
 #include "fl_util.h"
 #include "s_math.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
+#include <FL/Fl_Button.H>
 #include <FL/Fl_Choice.H>
-#include <Fl_Knob/Fl_Knob.H>
 #include <FL/fl_draw.H>
 #include <vector>
 #include <cmath>
@@ -31,11 +32,14 @@ struct W_TsOscillogram::Impl {
   std::vector<float> timedata;
 
   Fl_Group *grpctl = nullptr;
+  Fl_Button *btnexpand = nullptr;
   int grpw = 0;
   int grph = 0;
 
-  void create_controls();
+  void create_controls(bool expanded);
   void reposition_controls();
+  void on_expand_controls();
+  void on_unexpand_controls();
   void changed_tb(float val);
   void changed_sc(float val);
   void changed_yoff(float val);
@@ -73,7 +77,7 @@ W_TsOscillogram::W_TsOscillogram(int x, int y, int w, int h)
   P->screen = new Impl::Screen(P.get(), sx, sy, sw, sh);
   this->resizable(P->screen);
 
-  P->create_controls();
+  P->create_controls(false);
   P->reposition_controls();
 
   this->end();
@@ -214,7 +218,9 @@ void W_TsOscillogram::Impl::Screen::draw_data() {
     return;
 
   auto safe_data = [p, n](int idx) {
-    return idx < 0 || (unsigned(idx) >= n) ? 0 : p[idx]; };
+    // return (idx < 0 || unsigned(idx) >= n) ? 0 : p[idx];
+    return p[clamp(idx, 0, int(n-1))];
+  };
 
   fl_color(255, 0, 0);
 
@@ -338,8 +344,30 @@ void W_TsOscillogram::resize(int x, int y, int w, int h) {
   P->reposition_controls();
 }
 
-void W_TsOscillogram::Impl::create_controls() {
+void W_TsOscillogram::Impl::create_controls(bool expanded) {
   int mh = 60;
+  int bh = 20;
+
+  bool btnfocus = this->btnexpand == Fl::focus();
+
+  delete this->grpctl;
+  this->grpctl = nullptr;
+  this->btnexpand = nullptr;
+
+  if (!expanded) {
+    int grpw = this->grpw = bh;
+    int grph = this->grph = bh;
+    Fl_Group *grpctl = this->grpctl = new Fl_Group(0, 0, grpw, grph);
+    grpctl->begin();
+    grpctl->resizable(nullptr);
+    Fl_Button *btn = this->btnexpand = new Fl_Button(0, 0, grpw, grph, "+");
+    if (btnfocus) btn->take_focus();
+    btn->labelfont(FL_COURIER|FL_BOLD);
+    btn->labelsize(16);
+    TRIGGER_CALLBACK(btn, this, on_expand_controls);
+    grpctl->end();
+    return;
+  }
 
   Fl_Group *grpctl = this->grpctl = new Fl_Group(0, 0, 1, mh);
   grpctl->begin();
@@ -349,38 +377,53 @@ void W_TsOscillogram::Impl::create_controls() {
   int curx = 0;
 
   Fl_Group *box {};
-  Fl_Knob *knob {};
+  Fl_Button *btn {};
+  Fl_KnobEx *knob {};
   Fl_Choice *choice {};
 
   int knobw = 42;
   int knobh = 42;
 
-  box = new Fl_Group(0, 0, 1, mh);
+  box = new Fl_Group(curx, 0, mh, mh);
+  box->begin();
+  // box->color(fl_rgb_color(191, 218, 255));
+  box->box(FL_ENGRAVED_BOX);
+  btn = this->btnexpand = new Fl_Button(curx, mh-bh, bh, bh, "-");
+  if (btnfocus) btn->take_focus();
+  btn->labelfont(FL_COURIER|FL_BOLD);
+  btn->labelsize(16);
+  TRIGGER_CALLBACK(btn, this, on_unexpand_controls);
+  curx += btn->w();
+  box->end();
+
+  box = new Fl_Group(curx, 0, 1, mh);
   box->begin();
   box->resizable(nullptr);
   box->color(fl_rgb_color(191, 218, 255));
   box->box(FL_ENGRAVED_BOX);
   curx += interx;
 
-  knob = new Fl_Knob(curx, 15, knobw, knobh, "X. period");
-  knob->type(Fl_Knob::LINELOG_3);
+  knob = new Fl_KnobEx(curx, 15, knobw, knobh, "X. period");
+  // knob->type(Fl_KnobEx::LINELOG_3);
+  knob->type(Fl_KnobEx::LINELOG_2);
   knob->labelsize(10);
   knob->align(FL_ALIGN_TOP);
   // knob->value(this->period / this->periodmax);
-  knob->value((std::log10(this->period) + 2) / 2);
+  // knob->value((std::log10(this->period) + 2) / 2);
+  knob->value((std::log10(this->period) + 3) / 3);
   VALUE_CALLBACK(knob, this, changed_tb);
   curx += knob->w() + interx;
 
-  knob = new Fl_Knob(curx, 15, knobw, knobh, "Y. scale");
-  knob->type(Fl_Knob::LINELIN);
+  knob = new Fl_KnobEx(curx, 15, knobw, knobh, "Y. scale");
+  knob->type(Fl_KnobEx::LINELIN);
   knob->labelsize(10);
   knob->align(FL_ALIGN_TOP);
   knob->value(this->scale / this->scalemax);
   VALUE_CALLBACK(knob, this, changed_sc);
   curx += knob->w() + interx;
 
-  knob = new Fl_Knob(curx, 15, knobw, knobh, "Y. offset");
-  knob->type(Fl_Knob::LINELIN);
+  knob = new Fl_KnobEx(curx, 15, knobw, knobh, "Y. offset");
+  knob->type(Fl_KnobEx::LINELIN);
   knob->labelsize(10);
   knob->align(FL_ALIGN_TOP);
   knob->range(-1, +1);
@@ -398,16 +441,16 @@ void W_TsOscillogram::Impl::create_controls() {
   box->box(FL_ENGRAVED_BOX);
   curx += interx;
 
-  knob = new Fl_Knob(curx, 15, knobw, knobh, "X. trig");
-  knob->type(Fl_Knob::LINELIN);
+  knob = new Fl_KnobEx(curx, 15, knobw, knobh, "X. trig");
+  knob->type(Fl_KnobEx::LINELIN);
   knob->labelsize(10);
   knob->align(FL_ALIGN_TOP);
   knob->value(this->xtrig);
   VALUE_CALLBACK(knob, this, changed_xtrig);
   curx += knob->w() + interx;
 
-  knob = new Fl_Knob(curx, 15, knobw, knobh, "Y. trig");
-  knob->type(Fl_Knob::LINELIN);
+  knob = new Fl_KnobEx(curx, 15, knobw, knobh, "Y. trig");
+  knob->type(Fl_KnobEx::LINELIN);
   knob->labelsize(10);
   knob->align(FL_ALIGN_TOP);
   knob->range(-1, +1);
@@ -427,7 +470,6 @@ void W_TsOscillogram::Impl::create_controls() {
   choice->value(this->trigmode);
   VALUE_CALLBACK(choice, this, changed_trigmode);
   curx += choice->w() + interx;
-#warning TODO
 
   box->size(curx - box->x(), mh);
   box->end();
@@ -447,9 +489,24 @@ void W_TsOscillogram::Impl::reposition_controls() {
   grpctl->resize(x, y+h-this->grph, this->grpw, this->grph);
 }
 
+void W_TsOscillogram::Impl::on_expand_controls() {
+  Q->begin();
+  this->create_controls(true);
+  this->reposition_controls();
+  Q->end();
+}
+
+void W_TsOscillogram::Impl::on_unexpand_controls() {
+  Q->begin();
+  this->create_controls(false);
+  this->reposition_controls();
+  Q->end();
+}
+
 void W_TsOscillogram::Impl::changed_tb(float val) {
   // float tb = clamp(val * this->periodmax, this->periodmin, this->periodmax);
-  float tb = std::pow(10.0f, -2 + 2 * val);
+  // float tb = std::pow(10.0f, -2 + 2 * val);
+  float tb = std::pow(10.0f, -3 + 3 * val);
   this->period = tb;
   Q->redraw();
 }

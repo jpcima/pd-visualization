@@ -6,3 +6,8 @@
       static_cast<decltype(r)>(p)->f(              \
           static_cast<decltype(v)>(w)->value());   \
     }, (r));
+
+#define TRIGGER_CALLBACK(v, r, f)               \
+  (v)->callback([](Fl_Widget *w, void *p) {     \
+      static_cast<decltype(r)>(p)->f();         \
+    }, (r));
