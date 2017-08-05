@@ -148,7 +148,8 @@ void W_DftSpectrogram::Impl::draw_rulers() {
       fl_line(xf, y+h-mh, xf, y+h-mh+l);
 
     char textbuf[32];
-    snprintf(textbuf, sizeof(textbuf), "%g", f);
+    // snprintf(textbuf, sizeof(textbuf), "%g", f);
+    snprintf(textbuf, sizeof(textbuf), "%gk", f/1000);
     textbuf[sizeof(textbuf)-1] = 0;
 
     fl_font(FL_COURIER, 10);
