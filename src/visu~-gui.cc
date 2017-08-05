@@ -138,14 +138,10 @@ static bool handle_message(const MessageHeader *msg) {
     }
 
     case MessageTag_Toggle:
-      if (window->shown()) {
-        disable();
+      if (window->visible())
         window->hide();
-        ::visu->reset_data();
-      } else {
-        enable();
+      else
         window->show();
-      }
       break;
 
     case MessageTag_Samples: {
@@ -303,6 +299,24 @@ static bool handle_cmdline(int argc, char *argv[]) {
   return true;
 }
 
+class W_MainWindow : public Fl_Double_Window {
+ public:
+  W_MainWindow(int w, int h, const char *l = nullptr)
+      : Fl_Double_Window(w, h, l) {}
+  // note: superclass destructor is non-virtual
+  int handle(int event) override;
+};
+
+int W_MainWindow::handle(int event) {
+  if (event == FL_SHOW) {
+    enable();
+  } else if (event == FL_HIDE) {
+    disable();
+    ::visu->reset_data();
+  }
+  return Fl_Double_Window::handle(event);
+}
+
 int main(int argc, char *argv[]) {
   if (!handle_cmdline(argc, argv))
     return 1;
@@ -325,7 +339,7 @@ int main(int argc, char *argv[]) {
 
   int w = 1, h = 1;
 
-  Fl_Double_Window *window = new Fl_Double_Window(w, h, ::arg_title.c_str());
+  Fl_Double_Window *window = new W_MainWindow(w, h, ::arg_title.c_str());
   ::window = window;
 
   switch (::arg_visu) {
@@ -369,7 +383,6 @@ int main(int argc, char *argv[]) {
   window->end();
 
   window->show();
-  enable();
   window->wait_for_expose();
 
   if (arg_fd != INVALID_SOCKET) {
