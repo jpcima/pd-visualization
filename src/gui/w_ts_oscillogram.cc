@@ -31,6 +31,9 @@ struct W_TsOscillogram::Impl {
 
   std::vector<float> timedata;
 
+  float detect_best_xdiv(float divlimit, int minw);
+  float detect_best_ydiv(float divlimit, int minh);
+
   Fl_Group *grpctl = nullptr;
   Fl_Button *btnexpand = nullptr;
   int grpw = 0;
@@ -148,33 +151,36 @@ void W_TsOscillogram::Impl::Screen::draw_back() {
   float yoff = P->yoff;
   int trigmode = P->trigmode;
 
+  const float dvmin = (-1 - yoff) / sc;
+  const float dvmax = (1 - yoff) / sc;
+  float xdiv = P->detect_best_xdiv(20.0f, 60);
+  float ydiv = P->detect_best_ydiv(10.0f, 30);
+
   fl_color(0, 0, 0);
   fl_rectf(sx, sy, sw, sh);
 
   for (unsigned i = 0; ; ++i) {
-    const float vinterval = 0.25;
-
-    float dv = vinterval * i;
+    float dv = ydiv * i;
+    float dv2 = -dv;
+    if (dv > dvmax && dv2 < dvmin)
+      break;
     int yv = sy + (sh-1) * (- yoff - dv * sc + 1) / 2;
-
+    int yv2 = sy + (sh-1) * (- yoff - dv2 * sc + 1) / 2;
     if (i == 0) {
       fl_color(100, 100, 100);
       fl_line(sx, yv, sx+sw-1, yv);
     } else {
-      float dv2 = -dv;
-      int yv2 = sy + (sh-1) * (- yoff - dv2 * sc + 1) / 2;
-      if ((std::abs(yv) < 0 || std::abs(yv) >= sh) &&
-          (std::abs(yv2) < 0 || std::abs(yv2) >= sh))
-        break;
       fl_color(50, 50, 50);
       fl_line(sx, yv, sx+sw-1, yv);
       fl_line(sx, yv2, sx+sw-1, yv2);
     }
   }
 
-  constexpr unsigned xdivs = 20;
-  for (unsigned i = 1; i < xdivs; ++i) {
-    int xi = sx + sw * i / float(xdivs);
+  for (unsigned i = 1; ; ++i) {
+    float r = 1 - i * xdiv / tb;
+    if (r < 0)
+      break;
+    int xi = sx + sw * r;
     fl_color(50, 50, 50);
     fl_line(xi, sy, xi, sy+sh-1);
   }
@@ -191,18 +197,34 @@ void W_TsOscillogram::Impl::Screen::draw_back() {
 
   fl_font(FL_COURIER, 12);
   fl_color(200, 200, 200);
-
   char textbuf[64];
-  if (tb < 1)
-    snprintf(textbuf, sizeof(textbuf), "X = %g ms", tb * 1e3);
-  else
-    snprintf(textbuf, sizeof(textbuf), "X = %g s", tb);
-  textbuf[sizeof(textbuf)-1] = 0;
-  fl_draw(textbuf, sx+2, sy+2, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
+  int tx = sx+2;
+  int ty = sy+2;
 
-  snprintf(textbuf, sizeof(textbuf), "Y = %g V", 2 / sc);
+  if (tb < 1)
+    snprintf(textbuf, sizeof(textbuf), "X = %.2f ms", tb * 1000);
+  else
+    snprintf(textbuf, sizeof(textbuf), "X = %.2f s", tb);
   textbuf[sizeof(textbuf)-1] = 0;
-  fl_draw(textbuf, sx+2, sy+16, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
+  fl_draw(textbuf, tx, ty, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
+
+  snprintf(textbuf, sizeof(textbuf), "Y = %.2f V", 2 / sc);
+  textbuf[sizeof(textbuf)-1] = 0;
+  fl_draw(textbuf, tx, ty+14, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
+
+  tx += std::ceil(fl_width("X = 000.00 ms"));
+  tx += 24;
+
+  if (xdiv < 1)
+    snprintf(textbuf, sizeof(textbuf), "dX = %.2f ms/div", xdiv * 1000);
+  else
+    snprintf(textbuf, sizeof(textbuf), "dX = %.2f s/div", xdiv);
+  textbuf[sizeof(textbuf)-1] = 0;
+  fl_draw(textbuf, tx, ty, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
+
+  snprintf(textbuf, sizeof(textbuf), "dY = %.2f V/div", ydiv);
+  textbuf[sizeof(textbuf)-1] = 0;
+  fl_draw(textbuf, tx, ty+14, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
 }
 
 void W_TsOscillogram::Impl::Screen::draw_data() {
@@ -321,7 +343,7 @@ void W_TsOscillogram::Impl::Screen::draw_pointer(int mx, int my) {
 
   char textbuf[64];
   if (t < 1)
-    snprintf(textbuf, sizeof(textbuf), "%.2f ms %.2f V", t * 1e3f, v);
+    snprintf(textbuf, sizeof(textbuf), "%.2f ms %.2f V", t * 1000, v);
   else
     snprintf(textbuf, sizeof(textbuf), "%.2f s %.2f V", t, v);
   textbuf[sizeof(textbuf)-1] = 0;
@@ -342,6 +364,46 @@ void W_TsOscillogram::Impl::Screen::draw_pointer(int mx, int my) {
 void W_TsOscillogram::resize(int x, int y, int w, int h) {
   W_TsVisu::resize(x, y, w, h);
   P->reposition_controls();
+}
+
+float W_TsOscillogram::Impl::detect_best_xdiv(float divlimit, int minw) {
+  float tb = this->period;
+  int sw = Q->w();
+
+  auto nthdiv = [](unsigned i) -> float {
+    const float v[] = { 50, 25, 10 };
+    return v[i % 3] * std::pow<float>(10, -float(i / 3));
+  };
+
+  float divs[2] = {nthdiv(0)};
+  for (unsigned i = 1; ; ++i) {
+    divs[1] = divs[0];
+    divs[0] = nthdiv(i);
+    if ((sw-1) * divs[0] / tb < minw)
+      return divs[1];
+    if (tb / divs[0] > divlimit)
+      return divs[0];
+  }
+}
+
+float W_TsOscillogram::Impl::detect_best_ydiv(float divlimit, int minh) {
+  float yr = 2 / this->scale;
+  int sh = Q->h();
+
+  auto nthdiv = [](unsigned i) -> float {
+    const float v[] = { 50, 25, 10 };
+    return v[i % 3] * std::pow<float>(10, -float(i / 3));
+  };
+
+  float divs[2] = {nthdiv(0)};
+  for (unsigned i = 1; ; ++i) {
+    divs[1] = divs[0];
+    divs[0] = nthdiv(i);
+    if ((sh-1) * divs[0] / yr < minh)
+      return divs[1];
+    if (yr / divs[0] > divlimit)
+      return divs[0];
+  }
 }
 
 void W_TsOscillogram::Impl::create_controls(bool expanded) {
