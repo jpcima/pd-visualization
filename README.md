@@ -24,4 +24,15 @@ This visualization shows a waterfall view of the DFT of the input.
 
 This visualization shows a spectrogram of the DFT of the input.
 
-![wfvisu~](docs/screen-sgvisu~.png)
+![sgvisu~](docs/screen-sgvisu~.png)
+
+## ogvisu~
+
+This visualization shows an oscillogram of the input.
+
+Features:
+- collapsible UI controls
+- control of position and scale
+- trigger
+
+![ogvisu~](docs/screen-ogvisu~.png)
