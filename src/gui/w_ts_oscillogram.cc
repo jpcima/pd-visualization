@@ -2,6 +2,7 @@
 #include "fl_widgets_ex.h"
 #include "fl_util.h"
 #include "s_math.h"
+#include "util/unit_format.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
@@ -195,34 +196,33 @@ void W_TsOscillogram::Impl::Screen::draw_back() {
     fl_line(sx, yt, sx+sw-1, yt);
   }
 
+  std::string X_str = unit_format("%.2f", tb);
+  std::string Y_str = unit_format("%.2f", 2 / sc);
+  std::string dX_str = unit_format("%.2f", xdiv);
+  std::string dY_str = unit_format("%.2f", ydiv);
+
   fl_font(FL_COURIER, 12);
   fl_color(200, 200, 200);
   char textbuf[64];
   int tx = sx+2;
   int ty = sy+2;
 
-  if (tb < 1)
-    snprintf(textbuf, sizeof(textbuf), "X = %.2f ms", tb * 1000);
-  else
-    snprintf(textbuf, sizeof(textbuf), "X = %.2f s", tb);
+  snprintf(textbuf, sizeof(textbuf), "X = %ss", X_str.c_str());
   textbuf[sizeof(textbuf)-1] = 0;
   fl_draw(textbuf, tx, ty, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
 
-  snprintf(textbuf, sizeof(textbuf), "Y = %.2f V", 2 / sc);
+  snprintf(textbuf, sizeof(textbuf), "X = %sV", Y_str.c_str());
   textbuf[sizeof(textbuf)-1] = 0;
   fl_draw(textbuf, tx, ty+14, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
 
   tx += std::ceil(fl_width("X = 000.00 ms"));
   tx += 24;
 
-  if (xdiv < 1)
-    snprintf(textbuf, sizeof(textbuf), "dX = %.2f ms/div", xdiv * 1000);
-  else
-    snprintf(textbuf, sizeof(textbuf), "dX = %.2f s/div", xdiv);
+  snprintf(textbuf, sizeof(textbuf), "dX = %ss/div", dX_str.c_str());
   textbuf[sizeof(textbuf)-1] = 0;
   fl_draw(textbuf, tx, ty, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
 
-  snprintf(textbuf, sizeof(textbuf), "dY = %.2f V/div", ydiv);
+  snprintf(textbuf, sizeof(textbuf), "dY = %sV/div", dY_str.c_str());
   textbuf[sizeof(textbuf)-1] = 0;
   fl_draw(textbuf, tx, ty+14, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
 }
