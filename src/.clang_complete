@@ -1,6 +1,4 @@
 -DPD
--DFLEXT_SYS=2
--DFLEXT_SHARED
 -DUSE_FFTW=1
 -I.
 -I../thirdparty/color/src
