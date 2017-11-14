@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
 
   //
   char *client_name;
-  if (asprintf(&client_name, "%s %s", progname, name) == -1)
+  if (asprintf(&client_name, "%s %s", visuname, name) == -1)
     throw std::bad_alloc();
   scope(exit) { free(client_name); };
 
