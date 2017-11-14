@@ -214,7 +214,7 @@ void W_TsOscillogram::Impl::Screen::draw_back() {
   textbuf[sizeof(textbuf)-1] = 0;
   fl_draw(textbuf, tx, ty, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
 
-  snprintf(textbuf, sizeof(textbuf), "X = %sV", Y_str.c_str());
+  snprintf(textbuf, sizeof(textbuf), "Y = %sV", Y_str.c_str());
   textbuf[sizeof(textbuf)-1] = 0;
   fl_draw(textbuf, tx, ty+14, 0, 0, FL_ALIGN_LEFT|FL_ALIGN_TOP, nullptr, 0);
 
