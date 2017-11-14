@@ -55,6 +55,9 @@ struct W_TsOscillogram::Impl {
   Screen *screen = nullptr;
 };
 
+constexpr float W_TsOscillogram::Impl::scalemin;
+constexpr float W_TsOscillogram::Impl::scalemax;
+
 class W_TsOscillogram::Impl::Screen : public Fl_Widget {
  public:
   Screen(Impl *P, int x, int y, int w, int h)

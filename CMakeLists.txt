@@ -47,6 +47,8 @@ endif()
 set(CMAKE_CXX_STANDARD "14")
 add_definitions("-D__STDC_FORMAT_MACROS=1")
 
+set(visu_names "wfvisu~" "ogvisu~" "sgvisu~")
+
 set(visu_common_SOURCES
   src/visu~.cc
   src/visu~-remote.cc
@@ -62,7 +64,11 @@ target_include_directories(visu_common
   PUBLIC src
   PUBLIC "${PD_INCLUDE_DIR}")
 target_link_libraries(visu_common
-  ${PD_LIBRARIES})
+  PUBLIC ${PD_LIBRARIES} PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  target_link_libraries(visu_common
+    PUBLIC dl)
+endif()
 set_target_properties(visu_common PROPERTIES
   POSITION_INDEPENDENT_CODE TRUE)
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
@@ -70,13 +76,13 @@ if(CMAKE_SYSTEM_NAME MATCHES "Windows")
 endif()
 
 add_pd_external(wfvisu_tilde "wfvisu~" src/wfvisu~.cc)
-target_link_libraries(wfvisu_tilde visu_common ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(wfvisu_tilde visu_common)
 
 add_pd_external(sgvisu_tilde "sgvisu~" src/sgvisu~.cc)
-target_link_libraries(sgvisu_tilde visu_common ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(sgvisu_tilde visu_common)
 
 add_pd_external(ogvisu_tilde "ogvisu~" src/ogvisu~.cc)
-target_link_libraries(ogvisu_tilde visu_common ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(ogvisu_tilde visu_common)
 
 ###
 
@@ -125,4 +131,27 @@ if(USE_FFTW)
 else()
   target_include_directories(visu_gui
     PRIVATE thirdparty/kfr/include)
+endif()
+
+pkg_check_modules(JACK jack)
+if(JACK_FOUND)
+  link_directories(${JACK_LIBRARY_DIRS})
+  include_directories(${JACK_INCLUDE_DIRS})
+  add_executable(visu_jack
+    src/jack-main.cc)
+  target_link_libraries(visu_jack
+    PRIVATE visu_common PRIVATE ${JACK_LIBRARIES})
+  set_property(TARGET visu_jack PROPERTY
+    OUTPUT_NAME "visu~-jack")
+  install(TARGETS visu_jack DESTINATION bin)
+  install(TARGETS visu_gui DESTINATION bin)
+  foreach(visu_name ${visu_names})
+    install(FILES "scripts/run-jack-visu~.sh"
+      PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE
+      DESTINATION bin
+      RENAME "${visu_name}")
+  endforeach()
 endif()
