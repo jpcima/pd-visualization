@@ -1,0 +1,35 @@
+#N canvas 32 529 578 392 12;
+#X obj 66 54 wfvisu~;
+#X text 139 54 Waterfall;
+#X obj 66 79 sgvisu~;
+#X obj 66 104 ogvisu~;
+#X text 139 79 Spectrogram;
+#X text 139 104 Oscillogram;
+#X obj 46 274 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
+-1;
+#X obj 46 295 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
+-1;
+#X obj 46 316 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
+-1;
+#X obj 212 306 wfvisu~ Waterfall;
+#X obj 212 330 sgvisu~ Spectrogram;
+#X obj 212 354 ogvisu~ Oscillogram;
+#X obj 178 255 adc~ 1;
+#X obj 372 255 adc~ 2;
+#X text 87 14 - Signal visualizers in external processes;
+#X text 66 198 Arguments;
+#X text 10 252 show/hide window;
+#X text 66 140 This object communicates its inputs to an external process
+which displays the signal in a separate window. Bang to show or hide
+the visualization.;
+#X text 150 198 - title;
+#X text 150 213 - number of inputs (up to 4 \, by default 2);
+#X connect 6 0 9 0;
+#X connect 7 0 10 0;
+#X connect 8 0 11 0;
+#X connect 12 0 9 0;
+#X connect 12 0 10 0;
+#X connect 12 0 11 0;
+#X connect 13 0 9 1;
+#X connect 13 0 10 1;
+#X connect 13 0 11 1;
