@@ -67,7 +67,7 @@ bool ogvisu_opts(t_ogvisu *x, int argc, t_atom *argv) {
     case 1: {
       char buf[128];
       atom_string(&argv[0], buf, sizeof(buf));
-      x->x_title.assign(buf);
+      title.assign(buf);
     }
     case 0:
       break;
