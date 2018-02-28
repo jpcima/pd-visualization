@@ -1,5 +1,6 @@
 #pragma once
 #include "w_visu.h"
+#include "s_smem.h"
 
 class W_TsVisu : public W_Visu {
  public:
@@ -8,5 +9,5 @@ class W_TsVisu : public W_Visu {
   virtual ~W_TsVisu() {}
 
   virtual void update_ts_data(
-      float sr, const float *smps, unsigned len) = 0;
+      float sr, const frame<> data[], unsigned len, unsigned nch) = 0;
 };

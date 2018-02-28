@@ -56,18 +56,26 @@ void wfvisu_free(t_wfvisu *x) {
 }
 
 bool wfvisu_opts(t_wfvisu *x, int argc, t_atom *argv) {
+  std::string title;
+  unsigned channels = 2;
   switch (argc) {
-    case 0:
-      break;
+    case 2: {
+      channels = (int)atom_getfloat(&argv[1]);
+      if ((int)channels <= 0 || channels > channelmax)
+          return false;
+    }
     case 1: {
       char buf[128];
       atom_string(&argv[0], buf, sizeof(buf));
       x->x_title.assign(buf);
-      break;
     }
+    case 0:
+      break;
     default:
       return false;
   }
+  x->x_title = std::move(title);
+  x->x_channels = channels;
   return true;
 }
 

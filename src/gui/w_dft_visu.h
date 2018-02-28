@@ -9,5 +9,5 @@ class W_DftVisu : public W_Visu {
   virtual ~W_DftVisu() {}
 
   virtual void update_dft_data(
-      const std::complex<float> *spec, unsigned n, float fs) = 0;
+      const std::complex<float> *spec[], unsigned n, float fs, unsigned nch) = 0;
 };

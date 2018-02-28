@@ -15,7 +15,8 @@ class RemoteVisu {
   void stop();
 
   bool toggle_visibility();
-  bool send_samples(float fs, const float *smp, unsigned n);
+  bool send_frames(
+      float fs, const float *data[], unsigned nframes, unsigned nchannels);
 
  private:
   struct Impl;

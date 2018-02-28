@@ -14,6 +14,7 @@
 # include <kfr/dft.hpp>
 #endif
 #include <getopt.h>
+#include <algorithm>
 #include <string>
 #include <array>
 #include <memory>
@@ -56,13 +57,14 @@ std::unique_ptr<kfr::dft_plan_real<float>> fftplan;
 std::unique_ptr<kfr::u8[]> ffttemp;
 #endif
 std::unique_ptr<float[]> fftin;
-std::unique_ptr<std::complex<float>[]> fftout;
+std::unique_ptr<std::complex<float>[]> fftout[channelmax];
 std::unique_ptr<float[]> fftwindow;
 
 constexpr float updatedelta = 10e-3f;
 
-sample_memory smem;
+sample_memory<> smem;
 float smemtime = 0;
+unsigned schannels = 1;
 
 bool enabled = false;
 bool visucandraw = false;
@@ -144,12 +146,25 @@ static bool handle_message(const MessageHeader *msg) {
         window->show();
       break;
 
-    case MessageTag_Samples: {
-      sample_memory &smem = ::smem;
+    case MessageTag_Frames: {
+      const float *data = &msg->f[0];
+      unsigned datalen = msg->len;
+
+      if (datalen < sizeof(uint32_t))
+          exit(1);
+      uint32_t nchannels = *(uint32_t *)data++;
+      datalen -= sizeof(*data);
+      if (nchannels == 0 || nchannels > channelmax)
+          exit(1);
+      uint32_t nframes = datalen / (nchannels * sizeof(float));
+
+      sample_memory<> &smem = ::smem;
       const float sr = ::samplerate;
       float t = ::smemtime;
-      for (unsigned i = 0, n = msg->len / sizeof(float); i < n; ++i) {
-        smem.append(msg->f[i]);
+      ::schannels = nchannels;
+
+      for (unsigned i = 0; i < nframes; ++i) {
+        smem.append(&data[i * nchannels], nchannels);
         t += 1 / sr;
         if (t >= updatedelta) {
           if (::enabled && ::updatefn)
@@ -184,10 +199,12 @@ static void dft_init() {
   smem.resize(fftsize);
 
   fftin.reset(new float[fftsize]());
-  fftout.reset(new std::complex<float>[fftsize/2+1]());
+  for (unsigned c = 0; c < channelmax; ++c)
+      fftout[c].reset(new std::complex<float>[fftsize/2+1]());
+
 #ifdef USE_FFTW
   fftplan.reset(fftwf_plan_dft_r2c_1d(
-      fftsize, fftin.get(), (fftwf_complex *)fftout.get(), FFTW_MEASURE));
+      fftsize, fftin.get(), (fftwf_complex *)fftout[0].get(), FFTW_MEASURE));
 #else
   fftplan.reset(new kfr::dft_plan_real<float>(fftsize));
   ffttemp.reset(new kfr::u8[fftplan->temp_size]());
@@ -200,24 +217,29 @@ static void dft_init() {
 
 static void dft_update() {
   float *fftin = ::fftin.get();
-  std::complex<float> *fftout = ::fftout.get();
-  unsigned fftsize = ::fftsize;
+  const unsigned fftsize = ::fftsize;
+  const unsigned nchannels = ::schannels;
+  const frame<> *smem = ::smem.data();
 
-  const float *smem = ::smem.data();
-  for (unsigned i = 0; i < fftsize; ++i)
-    fftin[i] = fftwindow[i] * smem[i];
-
+  for (unsigned c = 0; c < nchannels; ++c) {
+      std::complex<float> *fftout = ::fftout[c].get();
+      for (unsigned i = 0; i < fftsize; ++i)
+          fftin[i] = fftwindow[i] * smem[i].samples[c];
 #ifdef USE_FFTW
-  fftwf_execute(fftplan.get());
+      fftwf_execute_dft_r2c(fftplan.get(), fftin, (fftwf_complex *)fftout);
 #else
-  fftplan->execute((kfr::complex<float> *)fftout, fftin, ffttemp.get());
+      fftplan->execute((kfr::complex<float> *)fftout, fftin, ::ffttemp.get());
 #endif
+      for (unsigned i = 0; i < fftsize/2+1; ++i)
+          fftout[i] /= fftsize;
+  }
 
-  for (unsigned i = 0; i < fftsize/2+1; ++i)
-    fftout[i] /= fftsize;
+  const std::complex<float> *spec[channelmax];
+  for (unsigned c = 0; c < nchannels; ++c)
+      spec[c] = ::fftout[c].get();
 
   W_DftVisu *dftvisu = static_cast<W_DftVisu *>(::visu);
-  dftvisu->update_dft_data(fftout, fftsize/2+1, samplerate);
+  dftvisu->update_dft_data(spec, fftsize/2+1, samplerate, nchannels);
   visucandraw = true;
 }
 
@@ -229,9 +251,10 @@ static void ts_init() {
 }
 
 static void ts_update() {
-  const sample_memory &smem = ::smem;
+  const sample_memory<> &smem = ::smem;
+  const unsigned nchannels = ::schannels;
   W_TsVisu *tsvisu = static_cast<W_TsVisu *>(::visu);
-  tsvisu->update_ts_data(samplerate, smem.data(), smem.size());
+  tsvisu->update_ts_data(samplerate, smem.data(), smem.size(), nchannels);
   visucandraw = true;
 }
 

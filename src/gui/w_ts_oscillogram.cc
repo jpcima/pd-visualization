@@ -2,12 +2,15 @@
 #include "fl_widgets_ex.h"
 #include "fl_util.h"
 #include "s_math.h"
+#include "visu~-common.h"
 #include "util/unit_format.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Choice.H>
+#include <FL/Fl_Counter.H>
 #include <FL/fl_draw.H>
+#include <color/color.hpp>
 #include <vector>
 #include <cmath>
 
@@ -23,6 +26,7 @@ struct W_TsOscillogram::Impl {
   float xtrig = 0;  // 0..1
   float ytrig = 0;  // -1..1
   int trigmode = 0;
+  unsigned trigchannel = 0;
 
   // static constexpr float periodmin = 1e-2;
   // static constexpr float periodmax = 1;
@@ -30,7 +34,8 @@ struct W_TsOscillogram::Impl {
   static constexpr float scalemin = 0.4;
   static constexpr float scalemax = 4;
 
-  std::vector<float> timedata;
+  std::vector<frame<>> timedata;
+  unsigned channels = 0;
 
   float detect_best_xdiv(float divlimit, int minw);
   float detect_best_ydiv(float divlimit, int minh);
@@ -50,6 +55,7 @@ struct W_TsOscillogram::Impl {
   void changed_xtrig(float val);
   void changed_ytrig(float val);
   void changed_trigmode(int val);
+  void changed_trigchannel(float val);
 
   class Screen;
   Screen *screen = nullptr;
@@ -94,9 +100,10 @@ W_TsOscillogram::~W_TsOscillogram() {
 }
 
 void W_TsOscillogram::update_ts_data(
-    float sr, const float *smps, unsigned len) {
+    float sr, const frame<> data[], unsigned len, unsigned nch) {
   P->samplerate = sr;
-  P->timedata.assign(smps, smps + len);
+  P->timedata.assign(data, data + len);
+  P->channels = nch;
 }
 
 void W_TsOscillogram::reset_data() {
@@ -231,23 +238,25 @@ void W_TsOscillogram::Impl::Screen::draw_back() {
 }
 
 void W_TsOscillogram::Impl::Screen::draw_data() {
-  int sx = this->x();
-  int sy = this->y();
-  int sw = this->w();
-  int sh = this->h();
+  const unsigned channels = P->channels;
+  if (channels == 0)
+    return;
 
-  const float *p = P->timedata.data();
+  const frame<> *p = P->timedata.data();
   unsigned n = P->timedata.size();
 
   if (n == 0)
     return;
 
-  auto safe_data = [p, n](int idx) {
-    // return (idx < 0 || unsigned(idx) >= n) ? 0 : p[idx];
-    return p[clamp(idx, 0, int(n-1))];
-  };
+  int sx = this->x();
+  int sy = this->y();
+  int sw = this->w();
+  int sh = this->h();
 
-  fl_color(255, 0, 0);
+  auto safe_data = [p, n](int idx, unsigned ch) {
+    // return (idx < 0 || unsigned(idx) >= n) ? 0 : p[idx];
+    return p[clamp(idx, 0, int(n-1))].samples[ch];
+  };
 
   float sr = P->samplerate;
   float tb = P->period;
@@ -265,15 +274,17 @@ void W_TsOscillogram::Impl::Screen::draw_data() {
   float idf0 = n - 1 - tb * sr;
 
   bool trigd = false;
-  if (trigmode != 0) {
+  const unsigned trigchannel = P->trigchannel;
+
+  if (trigmode != 0 && trigchannel < channels) {
     float ylevel = (ytrig - yoff) / sc;
     float xdelta = xtrig * tb * sr;
     int idt = idf0 + xdelta;
-    float y1 = safe_data(idt + 1);
+    float y1 = safe_data(idt + 1, trigchannel);
     float y2 {};
     for (; idt >= 0 && !trigd; --idt) {
       y2 = y1;
-      y1 = safe_data(idt);
+      y1 = safe_data(idt, trigchannel);
       if ((trigup && y1 <= ylevel && y2 >= ylevel) ||
           (trigdown && y1 >= ylevel && y2 <= ylevel)) {
         float frac = (ylevel - y1) / (y2 - y1);
@@ -283,28 +294,39 @@ void W_TsOscillogram::Impl::Screen::draw_data() {
     }
   }
 
-  for (int i = 0; i < sw; ++i) {
-    float r = i / float(sw-1);
-    float idf = idf0 + r * tb * sr;
+  for (unsigned c = channels; c-- > 0;) {
+    const unsigned hue = (170 + c * 130) % 360;
+    color::hsv<float> col_hsv{(float)hue, 75, 80};
+    color::rgb<uint8_t> col_rgb(col_hsv);
 
-    int idx = idf;
-    float mu = idf - idx;
+    fl_color(
+      color::get::red(col_rgb),
+      color::get::green(col_rgb),
+      color::get::blue(col_rgb));
 
-    constexpr int nsmp = 4;
-    float ismp[nsmp];
-    for (int i = 0; i < nsmp; ++i)
-      ismp[i] = safe_data(idx + i);
+    for (int i = 0; i < sw; ++i) {
+      float r = i / float(sw-1);
+      float idf = idf0 + r * tb * sr;
 
-    // float smp = interp_linear(ismp, mu);
-    float smp = interp_catmull(ismp, mu);
+      int idx = idf;
+      float mu = idf - idx;
 
-    int oldxi = xi;
-    int oldyi = yi;
-    xi = sx + i;
-    yi = sy + (sh-1) * (- yoff - smp * sc + 1) / 2;
+      constexpr int nsmp = 4;
+      float ismp[nsmp];
+      for (int i = 0; i < nsmp; ++i)
+        ismp[i] = safe_data(idx + i, c);
 
-    if (i > 0)
-      fl_line(oldxi, oldyi, xi, yi);
+      // float smp = interp_linear(ismp, mu);
+      float smp = interp_catmull(ismp, mu);
+
+      int oldxi = xi;
+      int oldyi = yi;
+      xi = sx + i;
+      yi = sy + (sh-1) * (- yoff - smp * sc + 1) / 2;
+
+      if (i > 0)
+        fl_line(oldxi, oldyi, xi, yi);
+    }
   }
 
   if (trigmode != 0) {
@@ -445,6 +467,7 @@ void W_TsOscillogram::Impl::create_controls(bool expanded) {
   Fl_Button *btn {};
   Fl_KnobEx *knob {};
   Fl_Choice *choice {};
+  Fl_Counter *counter {};
 
   int knobw = 42;
   int knobh = 42;
@@ -536,6 +559,18 @@ void W_TsOscillogram::Impl::create_controls(bool expanded) {
   VALUE_CALLBACK(choice, this, changed_trigmode);
   curx += choice->w() + interx;
 
+  counter = new Fl_Counter(curx, 15, 65, knobh, "Trig. channel");
+  counter->labelsize(10);
+  counter->align(FL_ALIGN_TOP);
+  counter->textfont(FL_COURIER);
+  counter->textsize(12);
+  counter->type(FL_SIMPLE_COUNTER);
+  counter->step(1);
+  counter->bounds(1, channelmax);
+  counter->value(1 + this->trigchannel);
+  VALUE_CALLBACK(counter, this, changed_trigchannel);
+  curx += counter->w() + interx;
+
   box->size(curx - box->x(), mh);
   box->end();
 
@@ -599,5 +634,12 @@ void W_TsOscillogram::Impl::changed_ytrig(float val) {
 
 void W_TsOscillogram::Impl::changed_trigmode(int val) {
   this->trigmode = val;
+  Q->redraw();
+}
+
+void W_TsOscillogram::Impl::changed_trigchannel(float val)
+{
+  unsigned channel = (unsigned)val - 1;
+  this->trigchannel = channel;
   Q->redraw();
 }

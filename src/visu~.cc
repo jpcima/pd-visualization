@@ -19,6 +19,8 @@ t_visu::~t_visu() {
 
 void visu_init(t_visu *x, VisuType t) {
   x->x_visutype = t;
+  for (unsigned i = 1, n = x->x_channels; i < n; ++i)
+      inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("signal"), gensym("signal"));
   x->x_remote.reset(new RemoteVisu);
   unix_socketpair(AF_UNIX, SOCK_DGRAM, 0, x->x_comm);
   if (socksetblocking(x->x_comm[1].get(), false) == -1)
@@ -38,18 +40,26 @@ void visu_bang(t_visu *x) {
 }
 
 void visu_dsp(t_visu *x, t_signal **sp) {
-  t_int elts[] = { (t_int)x, (t_int)sp[0]->s_vec, sp[0]->s_n };
-  dsp_addv(visu_perform, sizeof(elts) / sizeof(*elts), elts);
+  t_int elts[2 + channelmax];
+  t_int *eltp = elts;
+  *eltp++ = (t_int)x;
+  for (unsigned i = 0, n = x->x_channels; i < n; ++i)
+      *eltp++ = (t_int)sp[i]->s_vec;
+  *eltp++ = sp[0]->s_n;
+  dsp_addv(visu_perform, eltp - elts, elts);
 }
 
 t_int *visu_perform(t_int *w) {
   ++w;
   t_visu *x = (t_visu *)(*w++);
-  t_sample *in = (t_sample *)(*w++);
+  unsigned channels = x->x_channels;
+  const t_sample *in[channelmax];
+  for (unsigned c = 0; c < channels; ++c)
+      in[c] = (t_sample *)(*w++);
   unsigned n = (uintptr_t)(*w++);
 
   RemoteVisu &remote = *x->x_remote;
-  bool sendok = remote.send_samples(sys_getsr(), in, n);
+  bool sendok = remote.send_frames(sys_getsr(), in, n, channels);
 
 #if 0  // not RT safe
   if (!sendok && remote.is_running())

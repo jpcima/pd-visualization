@@ -11,43 +11,62 @@
 #include <sys/types.h>
 
 static jack_client_t *g_client = nullptr;
-static jack_port_t *g_input = nullptr;
+static jack_port_t *g_input[channelmax] = {};
 static std::unique_ptr<t_visu> g_visu;
 static float g_samplerate = 44100;
+static unsigned g_channels = 2;
 
 // substitutions of pd standard routines
 extern "C" float sys_getsr() { return g_samplerate; }
-extern "C" void dsp_addv(t_perfroutine f, int n, t_int *vec) { /* don't need */ }
+extern "C" void dsp_addv(t_perfroutine, int, t_int *) { /* don't need */ }
+extern "C" t_inlet *inlet_new(t_object *, t_pd *, t_symbol *, t_symbol *) { return nullptr; /* don't need */ }
+extern "C" t_symbol *gensym(const char *) { return nullptr; /* don't need */ }
 
 //------------------------------------------------------------------------------
 static int cb_jack_process(jack_nframes_t nframes, void *) {
-  t_int w[4];
-  w[0] = (t_int)&visu_perform;
-  w[1] = (t_int)g_visu.get();
-  w[2] = (t_int)jack_port_get_buffer(g_input, nframes);
-  w[3] = (t_int)nframes;
+  t_int w[3 + channelmax];
+  t_int *wp = w;
+  *wp++ = (t_int)&visu_perform;
+  *wp++ = (t_int)g_visu.get();
+  for (unsigned i = 0, n = g_channels; i < n; ++i)
+      *wp++ = (t_int)jack_port_get_buffer(g_input[i], nframes);
+  *wp++ = (t_int)nframes;
   visu_perform(w);
   return 0;
 }
 
 //------------------------------------------------------------------------------
 int main(int argc, char *argv[]) {
-  const char *progname = argv[0];
-  if (const char *p = strrchr(progname, '/'))
-    progname = p + 1;
-#ifdef _WIN32
-  if (const char *p = strrchr(progname, '\\'))
-    progname = p + 1;
-#endif
-
-  const char *visuname = progname;
-  for (int c; (c = getopt(argc, argv, "t:")) != -1;) {
+  const char *visuname = nullptr;
+  for (int c; (c = getopt(argc, argv, "t:c:h")) != -1;) {
     switch (c) {
       case 't':
         visuname = optarg; break;
+      case 'c': {
+        unsigned nch = ::atoi(optarg);
+        if (nch < 1 || nch > channelmax) {
+            fprintf(stderr, "invalid number of channels (1-%u)\n", channelmax);
+            return 1;
+        }
+        g_channels = nch; break;
+      }
+      case 'h':
       default:
-        break;
+        fprintf(stderr, "Usage: %s [-t type] [-c channels] [title]\n", argv[0]);
+        return 1;
     }
+  }
+
+  if (!visuname) {
+    const char *progname = argv[0];
+    size_t pos;
+    for (pos = strlen(progname); pos > 0; --pos) {
+      if (progname[pos - 1] == '/') break;
+#ifdef _WIN32
+      if (progname[pos - 1] == '\\') break;
+#endif
+    }
+    visuname = progname + pos;
   }
 
   //
@@ -89,6 +108,7 @@ int main(int argc, char *argv[]) {
   g_visu.reset(visu);
   visu_init(visu, type);
   visu->x_title = name;
+  visu->x_channels = g_channels;
 
   //
   char *client_name;
@@ -102,10 +122,15 @@ int main(int argc, char *argv[]) {
   scope(exit) { jack_client_close(g_client); };
 
   //
-  g_input = jack_port_register(
-      g_client, "input", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput|JackPortIsTerminal, 0);
-  if (!g_input)
-    throw std::runtime_error("cannot register jack ports");
+  for (unsigned i = 0, n = g_channels; i < n; ++i) {
+      char portname[32];
+      sprintf(portname, "channel %u", i + 1);
+      jack_port_t *port = jack_port_register(
+          g_client, portname, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput|JackPortIsTerminal, 0);
+      if (!port)
+          throw std::runtime_error("cannot register jack ports");
+      g_input[i] = port;
+  }
 
   //
   g_samplerate = jack_get_sample_rate(g_client);

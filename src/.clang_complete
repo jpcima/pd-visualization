@@ -1,3 +1,4 @@
+-std=gnu++14
 -DPD
 -DUSE_FFTW=1
 -I.

@@ -8,7 +8,7 @@ class W_TsOscillogram : public W_TsVisu {
   ~W_TsOscillogram();
 
   void update_ts_data(
-      float sr, const float *smps, unsigned len) override;
+      float sr, const frame<> data[], unsigned len, unsigned nch) override;
   void reset_data() override;
 
   void resize(int x, int y, int w, int h) override;

@@ -13,10 +13,12 @@ struct W_DftSpectrogram::Impl {
   W_DftSpectrogram *Q = nullptr;
 
   float fsref = 44100;
+  float fs = 44100;
 
   int mx = -1, my = -1;
 
   std::vector<std::complex<float>> spec;
+  unsigned channels = 0;
 
   Fl_Box *rulertop = nullptr;
   Fl_Box *rulerbtm = nullptr;
@@ -71,12 +73,18 @@ W_DftSpectrogram::~W_DftSpectrogram() {
 }
 
 void W_DftSpectrogram::update_dft_data(
-    const std::complex<float> *spec, unsigned n, float fs) {
-  P->spec.assign(spec, spec + n);
+    const std::complex<float> *spec[], unsigned n, float fs, unsigned nch) {
+  P->spec.clear();
+  P->spec.reserve(nch * n);
+  for (unsigned c = 0; c < nch; ++c)
+      P->spec.insert(P->spec.end(), spec[c], spec[c] + n);
+  P->fs = fs;
+  P->channels = nch;
 }
 
 void W_DftSpectrogram::reset_data() {
   P->spec.clear();
+  P->channels = 0;
 }
 
 void W_DftSpectrogram::draw() {
@@ -210,31 +218,50 @@ void W_DftSpectrogram::Impl::draw_back() {
 }
 
 void W_DftSpectrogram::Impl::draw_data() {
-  int sw = this->screen->w();
-  int sh = this->screen->h();
+  const unsigned channels = this->channels;
+  if (channels == 0)
+    return;
 
-  const std::complex<float> *spec = this->spec.data();
-  unsigned specn = this->spec.size();
+  const unsigned specn = this->spec.size() / channels;
   if (specn == 0)
     return;
 
-  fl_color(51, 204, 179);
+  const float fs = this->fs;
+  const float fsref = this->fsref;
 
-  int lasty {};
-  for (int i = 0; i < sw; ++i) {
-    float rx = i / float(sw-1);
+  const int sx = this->screen->x();
+  const int sy = this->screen->y();
+  const int sw = this->screen->w();
+  const int sh = this->screen->h();
 
-    // no interpolation
-    int speci = std::lrint(rx * (specn-1));
-    float a = std::abs(spec[speci]);
+  for (unsigned c = channels; c-- > 0;) {
+    const std::complex<float> *spec = &this->spec[c * specn];
 
-    float g = (a > 0.0f) ? (20 * std::log10(a)) : dbmin;
-    float dv = (g - dbmin) / (dbmax - dbmin);
+    const unsigned hue = (170 + c * 130) % 360;
+    color::hsv<float> col_hsv{(float)hue, 75, 80};
+    color::rgb<uint8_t> col_rgb(col_hsv);
 
-    int newy = (1-dv)*(sh-1);
-    if (i > 0)
-      fl_line(i-1, lasty, i, newy);
-    lasty = newy;
+    fl_color(
+      color::get::red(col_rgb),
+      color::get::green(col_rgb),
+      color::get::blue(col_rgb));
+
+    int lasty {};
+    for (int i = 0; i < sw; ++i) {
+      float rx = i / float(sw-1);
+
+      // no interpolation
+      int speci = std::lrint(rx * (specn-1) * (fsref / fs));
+      float a = std::abs(spec[speci]);
+
+      float g = (a > 0.0f) ? (20 * std::log10(a)) : dbmin;
+      float dv = (g - dbmin) / (dbmax - dbmin);
+
+      int newy = sy+(1-dv)*(sh-1);
+      if (i > 0)
+          fl_line(sx+i-1, lasty, sx+i, newy);
+      lasty = newy;
+    }
   }
 }
 

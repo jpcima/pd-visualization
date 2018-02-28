@@ -253,7 +253,8 @@ bool RemoteVisu::toggle_visibility() {
   return P->send_message(msg);
 }
 
-bool RemoteVisu::send_samples(float fs, const float *smp, unsigned n) {
+bool RemoteVisu::send_frames(
+    float fs, const float *data[], unsigned nframes, unsigned nchannels) {
   MessageHeader *msg = P->msg.get();
   msg->tag = MessageTag_SampleRate;
   msg->len = sizeof(float);
@@ -261,18 +262,25 @@ bool RemoteVisu::send_samples(float fs, const float *smp, unsigned n) {
   if (!P->send_message(msg))
     return false;
 
-  const unsigned maxdatalen = msgmax - sizeof(MessageHeader);
-  const unsigned maxsamples = maxdatalen / sizeof(float);
+  constexpr unsigned maxdatalen = msgmax - sizeof(MessageHeader);
+  constexpr unsigned headerlen = sizeof(uint32_t);
+  constexpr unsigned maxsamples = (maxdatalen - headerlen) / sizeof(float);
+  const unsigned maxframes = maxsamples / nchannels;
 
-  for (unsigned i = 0; i < n;) {
-    unsigned nsamples = std::min(n - i, maxsamples);
-    unsigned datalen = nsamples * sizeof(float);
-    msg->tag = MessageTag_Samples;
-    msg->len = datalen;
-    memcpy(msg->f, &smp[i], datalen);
-    if (!P->send_message(msg))
-      return false;
-    i += nsamples;
+  msg->tag = MessageTag_Frames;
+  for (unsigned i = 0; i < nframes;) {
+      unsigned nsend = std::min(nframes - i, maxframes);
+      msg->len = headerlen + nsend * nchannels * sizeof(float);
+      float *buf = &msg->f[0];
+      // header
+      *(uint32_t *)buf++ = nchannels;
+      // frames
+      for (unsigned j = i + nsend; i < j; ++i) {
+          for (unsigned c = 0; c < nchannels; ++c)
+              *buf++ = data[c][i];
+      }
+      if (!P->send_message(msg))
+          return false;
   }
 
   return true;

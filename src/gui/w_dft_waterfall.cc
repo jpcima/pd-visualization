@@ -86,46 +86,61 @@ W_DftWaterfall::~W_DftWaterfall() {
 }
 
 void W_DftWaterfall::update_dft_data(
-    const std::complex<float> *spec, unsigned n, float fs) {
-  unsigned sw = P->screen->w();
-  unsigned sh = P->screen->h();
+    const std::complex<float> *spec[], unsigned n, float fs, unsigned nch) {
+  if (n == 0 || nch == 0)
+    return;
+
+  const unsigned sw = P->screen->w();
+  const unsigned sh = P->screen->h();
   if (sw == 0 || sh == 0)
     return;
 
   if (!P->imagebuf_valid())
     return;
 
-  float dbmin = P->dbmin;
-  float dbmax = P->dbmax;
+  const float dbmin = P->dbmin;
+  const float dbmax = P->dbmax;
+  const float fsref = P->fsref;
 
-  unsigned pixsize = P->pixsize;
+  const unsigned pixsize = P->pixsize;
 
   P->advance_row(1);
   uint8_t *row = P->current_btm_row();
+
   for (unsigned i = 0; i < sw; ++i) {
-    float rx = i / float(sw-1);
-    int speci = std::lrint(rx * (n-1));
+    unsigned red = 0;
+    unsigned green = 0;
+    unsigned blue = 0;
 
-    // no interpolation
-    float a = std::abs(spec[speci]);
+    for (unsigned c = 0; c < nch; ++c) {
+      float rx = i / float(sw-1);
+      int speci = std::lrint(rx * (n-1) * (fsref / fs));
 
-    float g = (a > 0.0f) ? (20 * std::log10(a)) : dbmin;
+      // no interpolation
+      float a = std::abs(spec[c][speci]);
+      float g = (a > 0.0f) ? (20 * std::log10(a)) : dbmin;
 
-    // value display
-    float dv = (g - dbmin) / (dbmax - dbmin);
-    dv = std::min(dv, 1.0f);
-    dv = std::max(dv, 0.0f);
+      // value display
+      float dv = (g - dbmin) / (dbmax - dbmin);
+      dv = std::min(dv, 1.0f);
+      dv = std::max(dv, 0.0f);
 
-    const float logt = 50;
-    float logdv = (std::pow(logt, dv) - 1) / (logt - 1);
+      const float logt = 50;
+      float logdv = (std::pow(logt, dv) - 1) / (logt - 1);
 
-    color::hsl<float> hcol {170, 50, logdv * 100};
-    color::rgb<uint8_t> col(hcol);
+      const unsigned hue = (170 + c * 130) % 360;
+      color::hsl<float> hcol{(float)hue, 50, logdv * 100};
+      color::rgb<uint8_t> col(hcol);
+
+      red += color::get::red(col);
+      green += color::get::green(col);
+      blue += color::get::blue(col);
+    }
 
     uint8_t *pix = &row[i*pixsize];
-    pix[0] = color::get::red(col);
-    pix[1] = color::get::green(col);
-    pix[2] = color::get::blue(col);
+    pix[0] = std::min(255u, red);
+    pix[1] = std::min(255u, green);
+    pix[2] = std::min(255u, blue);
     pix[3] = 0;
   }
   memcpy(P->current_btm_row(true), row, P->stride);

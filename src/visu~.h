@@ -17,6 +17,7 @@ struct t_visu {
   float x_signalin = 0;
   VisuType x_visutype = Visu_Default;
   std::string x_title;
+  unsigned x_channels = 2;
   std::unique_ptr<RemoteVisu> x_remote;
   std::thread x_commander;
   unix_sock x_comm[2];
