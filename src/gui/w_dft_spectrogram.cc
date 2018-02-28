@@ -35,8 +35,7 @@ struct W_DftSpectrogram::Impl {
 };
 
 // margins
-static constexpr int mw = 20;
-static constexpr int mh = 20;
+static constexpr int /*mw = 20,*/ mh = 20;
 
 W_DftSpectrogram::W_DftSpectrogram(int x, int y, int w, int h)
     : W_DftVisu(x, y, w, h),

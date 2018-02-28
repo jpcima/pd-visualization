@@ -1,25 +1,28 @@
 # data file for the Fltk User Interface Designer (fluid)
-version 1.0010 
-header_name {.H} 
-code_name {.cxx} 
-gridx 5 
-gridy 5 
-snap 3
-decl {\#include <FL/Fl_Valuator.H>} {public
-} 
+version 1.0304
+header_name {.H}
+code_name {.cxx}
+decl {\#include <FL/Fl_Valuator.H>} {public local
+}
 
-decl {\#include <FL/fl_draw.H>} {} 
+decl {\#include <FL/fl_draw.H>} {private local
+}
 
-decl {\#include <math.h>} {} 
+decl {\#include <math.h>} {private local
+}
 
 class Fl_Knob {open : {public Fl_Valuator}
 } {
-  decl {enum Fl_Knobtype {DOTLIN=0,DOTLOG_1,DOTLOG_2,DOTLOG_3,LINELIN,LINELOG_1,LINELOG_2,LINELOG_3};} {public
+  decl {enum Fl_Knobtype {DOTLIN=0,DOTLOG_1,DOTLOG_2,DOTLOG_3,LINELIN,LINELOG_1,LINELOG_2,LINELOG_3};} {public local
   }
-  decl {int _type;} {}
-  decl {float _percent;} {}
-  decl {int _scaleticks;} {}
-  decl {short a1,a2;} {}
+  decl {int _type;} {private local
+  }
+  decl {float _percent;} {private local
+  }
+  decl {int _scaleticks;} {private local
+  }
+  decl {short a1,a2;} {private local
+  }
   Function {Fl_Knob(int xx,int yy,int ww,int hh,const char *l): Fl_Valuator(xx,yy,ww,hh,l)} {} {
     code {a1 = 35;
 	a2 = 325;
@@ -27,11 +30,11 @@ class Fl_Knob {open : {public Fl_Valuator}
 	_percent = 0.3;
 	_scaleticks = 10;} {}
   }
-  Function {virtual ~Fl_Knob()} {} {}
+  decl {virtual ~Fl_Knob() {}} {selected public local
+  }
   Function {draw()} {open protected
   } {
     code {int ox,oy,ww,hh,side;
-float sa,ca,a_r;
 unsigned char rr,gg,bb;
 
 	ox = x();
@@ -110,8 +113,7 @@ unsigned char rr,gg,bb;
 	fl_pie(ox+10,oy+10,side-20,side-20,127,133);
 	fl_pie(ox+10,oy+10,side-20,side-20,307,313);
 	draw_cursor(ox,oy,side);
-	fl_pop_clip();} {selected
-    }
+	fl_pop_clip();} {}
   }
   Function {handle(int  event)} {protected return_type int
   } {
@@ -176,10 +178,9 @@ unsigned char rr,gg,bb;
 	bb = bb < 0 ? 0:bb;
 	fl_color((uchar)rr,(uchar)gg,(uchar)bb);} {}
   }
-  Function {draw_scale(const int ox,const int oy,const int side)} {private
+  Function {draw_scale(const int ox,const int oy,const int side)} {open private
   } {
     code {float x1,y1,x2,y2,rds,cx,cy,ca,sa;
-float minv,maxv,curv;
 
 	rds = side / 2;
 	cx = ox + side / 2;
@@ -296,4 +297,4 @@ double angle;
 	if (_scaleticks > 31) _scaleticks = 31;
 	if (visible()) damage(FL_DAMAGE_ALL);} {}
   }
-} 
+}

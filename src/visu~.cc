@@ -64,6 +64,8 @@ t_int *visu_perform(t_int *w) {
 #if 0  // not RT safe
   if (!sendok && remote.is_running())
     error("error writing to socket, is buffer full?");
+#else
+  (void)sendok;
 #endif
 
   return w;

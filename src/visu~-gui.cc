@@ -184,8 +184,6 @@ static bool handle_message(const MessageHeader *msg) {
 
 static void on_fd_input(FL_SOCKET, void *) {
   SOCKET rfd = ::arg_fd;
-  int revents {};
-
   MessageHeader *msg = nullptr;
   for (int ret; (ret = receive_from_fd(rfd, &msg)) != 0;) {
     if (ret == -1)
