@@ -1,5 +1,6 @@
 #!/bin/bash -e
 pkgname=jpcvisu
+dekformat=0 # 0=old (.zip/.tar.gz) 1=new (.dek)
 
 case "$#" in
     1) pkgos=$1; pkgver=$(git describe) ;;
@@ -13,6 +14,8 @@ cd "$scriptdir/.."
 if test "${pkgver:0:1}" = v; then
     pkgver="${pkgver:1}"
 fi
+
+mkdir -p deken-pkg
 
 rm -rf deken-tmp
 mkdir -p "deken-tmp/$pkgname"
@@ -41,7 +44,14 @@ find thirdparty -type f | while read f; do
     esac
 done
 
-cp -va objects.txt "deken-tmp/$pkgname-v$pkgver-objects.txt"
-
 cd deken-tmp
-deken package -v "$pkgver" "$pkgname"
+deken package --dekformat "$dekformat" --version "$pkgver" "$pkgname"
+if test "$dekformat" -lt 1; then
+    case "$pkgos" in
+        windows) mv -f *.zip *.zip.* ../deken-pkg/ ;;
+        *) mv -f *.tar.gz *.tar.gz.* ../deken-pkg/ ;;
+    esac
+else
+    mv -f *.dek *.dek.* ../deken-pkg/
+fi
+cp -f ../objects.txt "../deken-pkg/$pkgname-v$pkgver-objects.txt"
