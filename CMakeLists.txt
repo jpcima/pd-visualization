@@ -10,6 +10,11 @@ endif()
 option(USE_FFTW "Use FFTW" ON)
 option(USE_STATIC_FLTK "Use static FLTK" "${STATIC_LINK_DEFAULT}")
 option(LINK_STATICALLY "Use static linking" "${STATIC_LINK_DEFAULT}")
+option(USE_LIBCXX "Use libc++" OFF)
+
+if(USE_LIBCXX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+endif()
 
 include(FindPkgConfig)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
