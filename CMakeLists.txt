@@ -90,7 +90,7 @@ add_library(Fl_Knob STATIC
   thirdparty/Fl_Knob/Fl_Knob/Fl_Knob.cxx)
 target_include_directories(Fl_Knob
   PUBLIC thirdparty/Fl_Knob
-  PUBLIC ${FLTK_INCLUDE_DIRS})
+  PUBLIC "${FLTK_INCLUDE_DIR}")
 target_link_libraries(Fl_Knob ${PROJECT_FLTK_LIBRARIES})
 
 set(visu_gui_SOURCES
@@ -115,7 +115,7 @@ target_compile_definitions(visu_gui
 target_include_directories(visu_gui
   PRIVATE src
   PRIVATE thirdparty/color/src
-  PRIVATE ${FLTK_INCLUDE_DIRS})
+  PRIVATE "${FLTK_INCLUDE_DIR}")
 target_link_libraries(visu_gui Fl_Knob ${PROJECT_FLTK_LIBRARIES})
 if(LINK_STATICALLY)
   target_static_link(visu_gui)
