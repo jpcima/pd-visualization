@@ -397,7 +397,7 @@ float W_TsOscillogram::Impl::detect_best_xdiv(float divlimit, int minw) {
 
   auto nthdiv = [](unsigned i) -> float {
     const float v[] = { 50, 25, 10 };
-    return v[i % 3] * std::pow<float>(10, -float(i / 3));
+    return v[i % 3] * std::pow(10.0f, -float(i / 3));
   };
 
   float divs[2] = {nthdiv(0)};
@@ -417,7 +417,7 @@ float W_TsOscillogram::Impl::detect_best_ydiv(float divlimit, int minh) {
 
   auto nthdiv = [](unsigned i) -> float {
     const float v[] = { 50, 25, 10 };
-    return v[i % 3] * std::pow<float>(10, -float(i / 3));
+    return v[i % 3] * std::pow(10.0f, -float(i / 3));
   };
 
   float divs[2] = {nthdiv(0)};

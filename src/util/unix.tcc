@@ -35,11 +35,12 @@ inline int select1(SOCKET readfd, SOCKET writefd, SOCKET exceptfd, struct timeva
   fd_set sets[3];
   fd_set *setp[3] {};
   for (unsigned i = 0; i < 3; ++i) {
-    if (fds[i] != INVALID_SOCKET) {
+    SOCKET fd = fds[i];
+    if (fd != INVALID_SOCKET) {
       FD_ZERO(&sets[i]);
-      FD_SET(fds[i], &sets[i]);
+      FD_SET(fd, &sets[i]);
       setp[i] = &sets[i];
-      nfds = std::max(nfds, fds[i] + 1);
+      nfds = (fd + 1 > nfds) ? (fd + 1) : nfds;
     }
   }
   return select(nfds, setp[0], setp[1], setp[2], timeout);
