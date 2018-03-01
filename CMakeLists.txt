@@ -9,6 +9,7 @@ endif()
 
 option(USE_FFTW "Use FFTW" ON)
 option(USE_STATIC_FLTK "Use static FLTK" "${STATIC_LINK_DEFAULT}")
+option(USE_STATIC_FFTW "Use static FFTW" "${STATIC_LINK_DEFAULT}")
 option(LINK_STATICALLY "Use static linking" "${STATIC_LINK_DEFAULT}")
 option(USE_LIBCXX "Use libc++" OFF)
 
@@ -39,14 +40,27 @@ if(USE_STATIC_FLTK OR LINK_STATICALLY)
 else()
   set(PROJECT_FLTK_LIBRARIES "${FLTK_LIBRARIES}")
 endif()
-
-if(USE_FFTW)
-  pkg_check_modules(FFTW3F fftw3f)
-endif()
-
 link_directories(${FLTK_LIBRARY_DIRS})
+
 if(USE_FFTW)
-  link_directories(${FFTW3F_LIBRARY_DIRS})
+  find_path(FFTW3F_INCLUDE_DIR fftw3.h)
+  find_library(FFTW3F_LIBRARY fftw3f)
+  if(NOT FFTW3F_INCLUDE_DIR OR NOT FFTW3F_LIBRARY)
+    message(FATAL_ERROR "cannot find FFTW")
+  else()
+    message(STATUS "Found FFTW: ${FFTW3F_LIBRARY}")
+  endif()
+  if(USE_STATIC_FFTW OR LINK_STATICALLY)
+    find_static_library(StaticFFTW3F_LIBRARY fftw3f)
+    if(NOT StaticFFTW3F_LIBRARY)
+      message(FATAL_ERROR "cannot find static FFTW")
+    else()
+      message(STATUS "Found static FFTW: ${StaticFFTW3F_LIBRARY}")
+    endif()
+    set(PROJECT_FFTW3F_LIBRARIES "${StaticFFTW3F_LIBRARY}")
+  else()
+    set(PROJECT_FFTW3F_LIBRARIES "${FFTW3F_LIBRARY}")
+  endif()
 endif()
 
 set(CMAKE_CXX_STANDARD "14")
@@ -130,9 +144,9 @@ if(USE_FFTW)
   target_compile_definitions(visu_gui
     PRIVATE "USE_FFTW=1")
   target_include_directories(visu_gui
-    PRIVATE ${FFTW3F_INCLUDE_DIRS})
+    PRIVATE "${FFTW3F_INCLUDE_DIR}")
   target_link_libraries(visu_gui
-    ${FFTW3F_LIBRARIES})
+    "${PROJECT_FFTW3F_LIBRARIES}")
 else()
   target_include_directories(visu_gui
     PRIVATE thirdparty/kfr/include)
