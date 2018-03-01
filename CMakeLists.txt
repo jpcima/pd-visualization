@@ -72,7 +72,7 @@ endif()
 set_target_properties(visu_common PROPERTIES
   POSITION_INDEPENDENT_CODE TRUE)
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  target_link_libraries(visu_common ws2_32 shlwapi)
+  target_link_libraries(visu_common PUBLIC ws2_32 shlwapi)
 endif()
 
 add_pd_external(wfvisu_tilde "wfvisu~" src/wfvisu~.cc)
