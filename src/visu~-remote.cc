@@ -82,7 +82,11 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   bool success = false;
 
   unix_sock sockpair[2];
+#if !defined(__APPLE__)
   unix_socketpair(AF_UNIX, SOCK_DGRAM, PF_UNIX, sockpair);
+#else
+  unix_socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, sockpair);
+#endif
 
   SOCKET rfd = sockpair[0].get();
   SOCKET wfd = sockpair[1].get();
