@@ -346,14 +346,14 @@ int main(int argc, char *argv[]) {
   if (arg_ppid != (DWORD)-1) {
     hparentprocess = OpenProcess(PROCESS_QUERY_INFORMATION, false, arg_ppid);
     if (!hparentprocess)
-      throw std::system_error(GetLastError(), std::system_category());
+      throw std::system_error(GetLastError(), std::system_category(), "OpenProcess");
   }
 #endif
 
 #ifdef _WIN32
   WSADATA wsadata {};
   if (WSAStartup(MAKEWORD(2, 2), &wsadata) != 0)
-    throw std::system_error(socket_errno(), socket_category());
+    throw std::system_error(socket_errno(), socket_category(), "WSAStartup");
 #endif
 
   Fl::visual(FL_RGB);
@@ -409,9 +409,9 @@ int main(int argc, char *argv[]) {
   if (arg_fd != INVALID_SOCKET) {
     // ready
     if (socket_retry(send, arg_fd, "!", 1, 0) == -1)
-      throw std::system_error(socket_errno(), socket_category());
+      throw std::system_error(socket_errno(), socket_category(), "send");
     if (socksetblocking(arg_fd, false) == -1)
-      throw std::system_error(socket_errno(), socket_category());
+      throw std::system_error(socket_errno(), socket_category(), "socksetblocking");
   }
 
   return Fl::run();

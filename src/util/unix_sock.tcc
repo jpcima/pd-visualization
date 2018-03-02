@@ -80,7 +80,7 @@ inline int socket_errno() noexcept {
 inline void unix_socketpair(int domain, int type, int protocol, unix_sock s[2]) {
   SOCKET sa[2];
   if (socketpair(domain, type, protocol, sa) == -1)
-    throw std::system_error(errno, socket_category());
+    throw std::system_error(errno, socket_category(), "socketpair");
   s[0].reset(sa[0]);
   s[1].reset(sa[1]);
 }

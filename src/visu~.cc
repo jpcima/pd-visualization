@@ -24,7 +24,7 @@ void visu_init(t_visu *x, VisuType t) {
   x->x_remote.reset(new RemoteVisu);
   unix_socketpair(AF_UNIX, SOCK_DGRAM, 0, x->x_comm);
   if (socksetblocking(x->x_comm[1].get(), false) == -1)
-    throw std::system_error(socket_errno(), socket_category());
+    throw std::system_error(socket_errno(), socket_category(), "socksetblocking");
   x->x_commander = std::thread(&t_visu::commander_thread_routine, x);
 }
 
@@ -80,7 +80,7 @@ void t_visu::commander_thread_routine() {
     size_t n = socket_retry(recv, fd, &msg, 1, 0);
 
     if ((ssize_t)n == -1)
-      throw std::system_error(socket_errno(), socket_category());
+      throw std::system_error(socket_errno(), socket_category(), "recv");
 
     if (n != 1)
       throw std::runtime_error("error in communication protocol");

@@ -53,7 +53,7 @@ inline void unix_pipe(unix_fd p[2]) {
 #else
   if (pipe(pa) == -1)
 #endif
-    throw std::system_error(errno, std::generic_category());
+    throw std::system_error(errno, std::generic_category(), "pipe");
   p[0].reset(pa[0]);
   p[1].reset(pa[1]);
 }

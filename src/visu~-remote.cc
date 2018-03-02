@@ -88,16 +88,16 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   SOCKET wfd = sockpair[1].get();
 
   if (socksetblocking(wfd, false) == -1)
-    throw std::system_error(socket_errno(), socket_category());
+    throw std::system_error(socket_errno(), socket_category(), "socksetblocking");
 
 #ifndef _WIN32
   int wfdflags = fcntl(wfd, F_GETFD);
   if (wfdflags == -1 || fcntl(wfd, F_SETFD, wfdflags|FD_CLOEXEC) == -1)
-    throw std::system_error(socket_errno(), socket_category());
+    throw std::system_error(socket_errno(), socket_category(), "fcntl");
 #endif
   if (setsockopt(
           wfd, SOL_SOCKET, SO_SNDBUF, (const char *)&sockbuf, sizeof(sockbuf)) == -1)
-    throw std::system_error(socket_errno(), socket_category());
+    throw std::system_error(socket_errno(), socket_category(), "setsockopt");
 
   char rfd_str[16];
   sprintf(rfd_str, "%" PRIdSOCKET, rfd);
@@ -149,7 +149,7 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
           true, CREATE_NO_WINDOW,
           nullptr, nullptr,
           &sinfo, &pinfo))
-    throw std::system_error(GetLastError(), std::system_category());
+    throw std::system_error(GetLastError(), std::system_category(), "CreateProcess");
 
   HANDLE hprocess = pinfo.hProcess;
   scope(exit) { if (hprocess) CloseHandle(hprocess); };
@@ -169,7 +169,7 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
   pid_t pid;
   int ps_err = posix_spawn(&pid, pgm, &ps_fact, &ps_attr, ps_argv, environ);
   if (ps_err != 0)
-    throw std::system_error(ps_err, std::generic_category());
+    throw std::system_error(ps_err, std::generic_category(), "posix_spawn");
 #endif
 
   scope(exit) {
@@ -196,7 +196,7 @@ void RemoteVisu::start(const char *pgm, VisuType type, const char *title) {
     if ((ssize_t)n == -1) {
       int err = socket_errno();
       if (err != SOCK_ERR(EWOULDBLOCK))
-        throw std::system_error(err, socket_category());
+        throw std::system_error(err, socket_category(), "recv");
     } else if (n == 1) {
       if (bytebuf != '!')
         throw std::runtime_error("error in communication protocol");
