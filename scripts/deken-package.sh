@@ -1,6 +1,6 @@
 #!/bin/bash -e
 pkgname=jpcvisu
-dekformat=0 # 0=old (.zip/.tar.gz) 1=new (.dek)
+dekformat=1 # 0=old (.zip/.tar.gz) 1=new (.dek)
 
 case "$#" in
     1) pkgos=$1; pkgver=$(git describe) ;;
