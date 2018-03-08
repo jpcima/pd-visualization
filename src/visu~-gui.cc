@@ -29,7 +29,7 @@
 
 namespace {
 
-SOCKET arg_fd = -1;
+SOCKET arg_fd = INVALID_SOCKET;
 #ifdef _WIN32
 DWORD arg_ppid = -1;
 HANDLE hparentprocess = nullptr;
@@ -89,6 +89,8 @@ static void enable() {
 static void disable() {
   if (::enabled) {
     Fl::remove_timeout(&on_redraw_timeout);
+    if (arg_fd != INVALID_SOCKET)
+      Fl::remove_fd(arg_fd);
     ::enabled = false;
   }
 }
