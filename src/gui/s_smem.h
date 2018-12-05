@@ -20,6 +20,7 @@ class sample_memory {
   void resize(unsigned size) {
     buf_.reset(new frame_type[2 * size]());
     bufsize_ = size;
+    writeindex_ = 0;
   }
 
   void append(frame_type frame) {

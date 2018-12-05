@@ -48,7 +48,8 @@ W_Visu *visu = nullptr;
 
 constexpr double redraw_interval = 1 / 24.0;
 
-constexpr unsigned fftsize = 2 * 1024;
+VisuDftResolution fftres = (VisuDftResolution)-1;
+unsigned fftsize = 2 * 1024;
 #ifdef USE_FFTW
 std::unique_ptr<fftwf_plan_s, void(*)(fftwf_plan)> fftplan{
   nullptr, &fftwf_destroy_plan};
@@ -195,7 +196,8 @@ static void on_fd_input(FL_SOCKET, void *) {
   }
 }
 
-static void dft_init() {
+static void dft_prepare() {
+  const unsigned fftsize = ::fftsize;
   smem.resize(fftsize);
 
   fftin.reset(new float[fftsize]());
@@ -215,7 +217,28 @@ static void dft_init() {
     fftwindow[i] = window_nutall(i / float(fftsize-1));
 }
 
+static void dft_initres(VisuDftResolution res) {
+  if (res == ::fftres)
+    return;
+
+  ::fftres = res;
+  switch (res) {
+    case VisuDftResolution::Medium:
+      ::fftsize = 2048; break;
+    case VisuDftResolution::High:
+      ::fftsize = 8192; break;
+  }
+  dft_prepare();
+}
+
+static void dft_init() {
+  dft_initres(VisuDftResolution::Medium);
+}
+
 static void dft_update() {
+  W_DftVisu *dftvisu = static_cast<W_DftVisu *>(::visu);
+  dft_initres(dftvisu->desired_resolution());
+
   float *fftin = ::fftin.get();
   const unsigned fftsize = ::fftsize;
   const unsigned nchannels = ::schannels;
@@ -238,7 +261,6 @@ static void dft_update() {
   for (unsigned c = 0; c < nchannels; ++c)
       spec[c] = ::fftout[c].get();
 
-  W_DftVisu *dftvisu = static_cast<W_DftVisu *>(::visu);
   dftvisu->update_dft_data(spec, fftsize/2+1, samplerate, nchannels);
   visucandraw = true;
 }
@@ -377,7 +399,7 @@ int main(int argc, char *argv[]) {
     }
     case Visu_Spectrogram: {
       w = 1000;
-      h = 200;
+      h = 250;
       window->size(w, h);
       ::visu = new W_DftSpectrogram(0, 0, w, h);
       ::initfn = &dft_init;

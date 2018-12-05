@@ -160,8 +160,9 @@ if(JACK_FOUND)
     src/jack-main.cc)
   target_link_libraries(visu_jack
     PRIVATE visu_common PRIVATE ${JACK_LIBRARIES})
-  set_property(TARGET visu_jack PROPERTY
-    OUTPUT_NAME "visu~-jack")
+  set_target_properties(visu_jack PROPERTIES
+    OUTPUT_NAME "visu~-jack"
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}")
   install(TARGETS visu_jack DESTINATION bin)
   install(TARGETS visu_gui DESTINATION bin)
   foreach(visu_name ${visu_names})

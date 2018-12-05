@@ -1,5 +1,6 @@
 #pragma once
 #include "w_visu.h"
+#include "../visu~-common.h"
 #include <complex>
 
 class W_DftVisu : public W_Visu {
@@ -10,4 +11,5 @@ class W_DftVisu : public W_Visu {
 
   virtual void update_dft_data(
       const std::complex<float> *spec[], unsigned n, float fs, unsigned nch) = 0;
+  virtual VisuDftResolution desired_resolution() const = 0;
 };

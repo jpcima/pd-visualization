@@ -32,6 +32,11 @@ enum VisuType {
   Visu_Default = Visu_Waterfall,
 };
 
+enum class VisuDftResolution {
+  Medium,
+  High,
+};
+
 #define PD_LAYOUT_CHECK(t)                                           \
   static_assert(std::is_standard_layout<t>() && !offsetof(t, x_obj), \
                 "object layout check failed");

@@ -145,6 +145,10 @@ void W_DftWaterfall::update_dft_data(
   memcpy(P->current_btm_row(true), row, P->stride);
 }
 
+VisuDftResolution W_DftWaterfall::desired_resolution() const {
+  return VisuDftResolution::Medium;
+}
+
 void W_DftWaterfall::reset_data() {
   if (!P->imagebuf_valid())
     return;

@@ -9,6 +9,7 @@ class W_DftWaterfall : public W_DftVisu {
 
   void update_dft_data(
       const std::complex<float> *spec[], unsigned n, float fs, unsigned nch) override;
+  VisuDftResolution desired_resolution() const override;
   void reset_data() override;
 
   void draw() override;
