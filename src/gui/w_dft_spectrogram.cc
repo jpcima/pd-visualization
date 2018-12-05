@@ -8,7 +8,6 @@
 #include <color/color.hpp>
 #include <algorithm>
 #include <vector>
-#include <complex>
 #include <cmath>
 #include <stdint.h>
 #include <string.h>
@@ -37,7 +36,7 @@ struct W_DftSpectrogram::Impl {
 
   int mx = -1, my = -1;
 
-  std::vector<std::complex<float>> spec;
+  std::vector<cfloat> spec;
   unsigned channels = 0;
 
   Fl_Box *rulertop = nullptr;
@@ -108,7 +107,7 @@ W_DftSpectrogram::~W_DftSpectrogram() {
 }
 
 void W_DftSpectrogram::update_dft_data(
-    const std::complex<float> *spec[], unsigned n, float fs, unsigned nch) {
+    const cfloat *spec[], unsigned n, float fs, unsigned nch) {
   P->spec.clear();
   P->spec.reserve(nch * n);
   for (unsigned c = 0; c < nch; ++c)
@@ -356,7 +355,7 @@ void W_DftSpectrogram::Impl::draw_data() {
   const int sh = this->screen->h();
 
   for (unsigned c = channels; c-- > 0;) {
-    const std::complex<float> *spec = &this->spec[c * specn];
+    const cfloat *spec = &this->spec[c * specn];
 
     const unsigned hue = (170 + c * 130) % 360;
     color::hsv<float> col_hsv{(float)hue, 75, 80};
@@ -369,8 +368,6 @@ void W_DftSpectrogram::Impl::draw_data() {
 
     int lasty {};
     for (int i = 0; i < sw; ++i) {
-      float rx = i / float(sw-1);
-
       float f = frequency_of_x(sx + i);
       float binnum = f * dftsize / fs;
       unsigned binidx = (unsigned)binnum;
