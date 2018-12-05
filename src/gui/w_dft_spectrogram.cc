@@ -27,6 +27,7 @@ struct W_DftSpectrogram::Impl {
   float x_of_frequency(float f) const;
 
   float nth_frequency_mark(unsigned i) const;
+  int height_of_mark(unsigned i) const;
 
   enum {
     Domain_Linear,
@@ -232,6 +233,20 @@ float W_DftSpectrogram::Impl::nth_frequency_mark(unsigned i) const
     }
 }
 
+int W_DftSpectrogram::Impl::height_of_mark(unsigned i) const {
+    switch (fdomain) {
+    default:
+    case Domain_Linear: {
+      const int gradh[] = {16, 6, 8, 6};
+      return gradh[i%4];
+    }
+    case Domain_Logarithmic: {
+      const int gradh[] = {16, 6, 8};
+      return gradh[i%3];
+    }
+    }
+}
+
 void W_DftSpectrogram::Impl::draw_rulers() {
   int x = Q->x();
   int y = Q->y();
@@ -249,8 +264,7 @@ void W_DftSpectrogram::Impl::draw_rulers() {
 
     int xf = x_of_frequency(f);
 
-    const int gradh[] = {16, 6, 8, 6};
-    int l = gradh[i%4];
+    int l = height_of_mark(i);
     if (this->rulertop)
       fl_line(xf, y+mh-l, xf, y+mh-1);
     if (this->rulerbtm)
