@@ -66,7 +66,7 @@ endif()
 set(CMAKE_CXX_STANDARD "14")
 add_definitions("-D__STDC_FORMAT_MACROS=1")
 
-set(visu_names "wfvisu~" "ogvisu~" "sgvisu~")
+set(visu_names "wfvisu~" "ogvisu~" "sgvisu~" "tfvisu~")
 
 set(visu_common_SOURCES
   src/visu~.cc
@@ -97,11 +97,14 @@ endif()
 add_pd_external(wfvisu_tilde "wfvisu~" src/wfvisu~.cc)
 target_link_libraries(wfvisu_tilde visu_common)
 
+add_pd_external(ogvisu_tilde "ogvisu~" src/ogvisu~.cc)
+target_link_libraries(ogvisu_tilde visu_common)
+
 add_pd_external(sgvisu_tilde "sgvisu~" src/sgvisu~.cc)
 target_link_libraries(sgvisu_tilde visu_common)
 
-add_pd_external(ogvisu_tilde "ogvisu~" src/ogvisu~.cc)
-target_link_libraries(ogvisu_tilde visu_common)
+add_pd_external(tfvisu_tilde "tfvisu~" src/tfvisu~.cc)
+target_link_libraries(tfvisu_tilde visu_common)
 
 ###
 
@@ -116,6 +119,7 @@ set(visu_gui_SOURCES
   src/visu~-gui.cc
   src/gui/w_dft_spectrogram.cc
   src/gui/w_dft_waterfall.cc
+  src/gui/w_dft_transfer.cc
   src/gui/w_ts_oscillogram.cc
   src/gui/fl_widgets_ex.cc
   src/util/unit_format.cc)

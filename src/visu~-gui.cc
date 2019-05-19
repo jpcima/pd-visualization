@@ -1,6 +1,7 @@
 #include "visu~-common.h"
 #include "gui/w_dft_waterfall.h"
 #include "gui/w_dft_spectrogram.h"
+#include "gui/w_dft_transfer.h"
 #include "gui/w_ts_oscillogram.h"
 #include "gui/s_smem.h"
 #include "gui/s_math.h"
@@ -413,6 +414,15 @@ int main(int argc, char *argv[]) {
       ::visu = new W_TsOscillogram(0, 0, w, h);
       ::initfn = &ts_init;
       ::updatefn = &ts_update;
+      break;
+    }
+    case Visu_Transfer: {
+      w = 1000;
+      h = 400;
+      window->size(w, h);
+      ::visu = new W_DftTransfer(0, 0, w, h);
+      ::initfn = &dft_init;
+      ::updatefn = &dft_update;
       break;
     }
     default:

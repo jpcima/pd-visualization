@@ -71,9 +71,9 @@ int main(int argc, char *argv[]) {
 
   //
   static const char *visu_names[] =
-      {"wfvisu~", "sgvisu~", "ogvisu~"};
+      {"wfvisu~", "sgvisu~", "ogvisu~", "tfvisu~"};
   static const VisuType visu_types[] = {
-    Visu_Waterfall, Visu_Spectrogram, Visu_Oscillogram};
+    Visu_Waterfall, Visu_Spectrogram, Visu_Oscillogram, Visu_Transfer};
 
   //
   const char *name;
