@@ -71,6 +71,18 @@ t_int *visu_perform(t_int *w) {
   return w;
 }
 
+///
+void visu_position(t_visu *x, t_float xpos, t_float ypos) {
+  RemoteVisu &remote = *x->x_remote;
+  remote.set_position(xpos, ypos);
+}
+
+void visu_size(t_visu *x, t_float w, t_float h) {
+  RemoteVisu &remote = *x->x_remote;
+  remote.set_size(w, h);
+}
+
+///
 void t_visu::commander_thread_routine() {
   SOCKET fd = this->x_comm[0].get();
   RemoteVisu &remote = *this->x_remote;

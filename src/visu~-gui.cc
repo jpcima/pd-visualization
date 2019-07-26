@@ -150,6 +150,37 @@ static bool handle_message(const MessageHeader *msg) {
         window->show();
       break;
 
+    case MessageTag_Position: {
+      const float *data = &msg->f[0];
+      unsigned datalen = msg->len;
+
+      if (datalen != 2 * sizeof(float))
+        exit(1);
+
+      int x = (int)data[0];
+      int y = (int)data[1];
+
+      window->position(x, y);
+
+      break;
+    }
+
+    case MessageTag_Size: {
+      const float *data = &msg->f[0];
+      unsigned datalen = msg->len;
+
+      if (datalen != 2 * sizeof(float))
+        exit(1);
+
+      int x = (int)data[0];
+      int y = (int)data[1];
+
+      if (x > 0 && y > 0)
+        window->size(x, y);
+
+      break;
+    }
+
     case MessageTag_Frames: {
       const float *data = &msg->f[0];
       unsigned datalen = msg->len;

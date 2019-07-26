@@ -15,6 +15,8 @@ class RemoteVisu {
   void stop();
 
   bool toggle_visibility();
+  bool set_position(float x, float y);
+  bool set_size(float w, float h);
   bool send_frames(
       float fs, const float *data[], unsigned nframes, unsigned nchannels);
 

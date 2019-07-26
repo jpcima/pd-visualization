@@ -16,6 +16,7 @@ void ogvisu_tilde_setup() {
       ogvisu_class, &ogvisu_bang);
   class_addmethod(
       ogvisu_class, (t_method)&ogvisu_dsp, gensym("dsp"), A_CANT, A_NULL);
+  visu_setup_generic_methods<t_ogvisu>(ogvisu_class);
 }
 
 void *ogvisu_new(t_symbol *s, int argc, t_atom *argv) {

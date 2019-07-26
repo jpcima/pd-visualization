@@ -16,6 +16,7 @@ void wfvisu_tilde_setup() {
       wfvisu_class, &wfvisu_bang);
   class_addmethod(
       wfvisu_class, (t_method)&wfvisu_dsp, gensym("dsp"), A_CANT, A_NULL);
+  visu_setup_generic_methods<t_wfvisu>(wfvisu_class);
 }
 
 void *wfvisu_new(t_symbol *s, int argc, t_atom *argv) {

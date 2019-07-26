@@ -16,6 +16,7 @@ void sgvisu_tilde_setup() {
       sgvisu_class, &sgvisu_bang);
   class_addmethod(
       sgvisu_class, (t_method)&sgvisu_dsp, gensym("dsp"), A_CANT, A_NULL);
+  visu_setup_generic_methods<t_sgvisu>(sgvisu_class);
 }
 
 void *sgvisu_new(t_symbol *s, int argc, t_atom *argv) {

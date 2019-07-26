@@ -11,6 +11,8 @@ enum MessageTag {
   MessageTag_SampleRate,
   MessageTag_Frames,
   MessageTag_Toggle,
+  MessageTag_Position,
+  MessageTag_Size,
 };
 
 struct MessageHeader {

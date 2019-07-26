@@ -30,3 +30,19 @@ void visu_free(t_visu *x);
 void visu_bang(t_visu *x);
 void visu_dsp(t_visu *x, t_signal **sp);
 t_int *visu_perform(t_int *w);
+
+///
+void visu_position(t_visu *x, t_float xpos, t_float ypos);
+void visu_size(t_visu *x, t_float w, t_float h);
+
+///
+template <class T>
+void visu_setup_generic_methods(t_class *c)
+{
+  class_addmethod(
+      c, (t_method)+[](t_visu *x, t_float xpos, t_float ypos) { visu_position(x, xpos, ypos); },
+      gensym("position"), A_FLOAT, A_FLOAT, A_NULL);
+  class_addmethod(
+      c, (t_method)+[](t_visu *x, t_float w, t_float h) { visu_size(x, w, h); },
+      gensym("size"), A_FLOAT, A_FLOAT, A_NULL);
+}

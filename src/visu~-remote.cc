@@ -257,6 +257,26 @@ bool RemoteVisu::toggle_visibility() {
   return P->send_message(msg);
 }
 
+bool RemoteVisu::set_position(float x, float y)
+{
+  MessageHeader *msg = P->msg.get();
+  msg->tag = MessageTag_Position;
+  msg->len = 2 * sizeof(float);
+  msg->f[0] = x;
+  msg->f[1] = y;
+  return P->send_message(msg);
+}
+
+bool RemoteVisu::set_size(float w, float h)
+{
+  MessageHeader *msg = P->msg.get();
+  msg->tag = MessageTag_Size;
+  msg->len = 2 * sizeof(float);
+  msg->f[0] = w;
+  msg->f[1] = h;
+  return P->send_message(msg);
+}
+
 bool RemoteVisu::send_frames(
     float fs, const float *data[], unsigned nframes, unsigned nchannels) {
   MessageHeader *msg = P->msg.get();
