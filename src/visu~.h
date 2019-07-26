@@ -3,6 +3,7 @@
 #include "util/unix.h"
 #include <m_pd.h>
 #include <thread>
+#include <atomic>
 #include <string>
 #include <memory>
 
@@ -21,6 +22,8 @@ struct t_visu {
   std::unique_ptr<RemoteVisu> x_remote;
   std::thread x_commander;
   unix_sock x_comm[2];
+  std::atomic_bool x_ready{false};
+  t_outlet *x_out_ready = nullptr;
   void (*x_cleanup)(t_visu *) = nullptr;
   void commander_thread_routine();
 };

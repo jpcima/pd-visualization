@@ -20,7 +20,9 @@ static unsigned g_channels = 2;
 extern "C" float sys_getsr() { return g_samplerate; }
 extern "C" void dsp_addv(t_perfroutine, int, t_int *) { /* don't need */ }
 extern "C" t_inlet *inlet_new(t_object *, t_pd *, t_symbol *, t_symbol *) { return nullptr; /* don't need */ }
+extern "C" t_outlet *outlet_new(t_object *owner, t_symbol *s) { return nullptr; /* don't need */ }
 extern "C" t_symbol *gensym(const char *) { return nullptr; /* don't need */ }
+extern "C" void outlet_bang(t_outlet *x) { /* don't need */ }
 
 //------------------------------------------------------------------------------
 static int cb_jack_process(jack_nframes_t nframes, void *) {

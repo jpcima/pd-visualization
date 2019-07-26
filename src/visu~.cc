@@ -21,6 +21,7 @@ void visu_init(t_visu *x, VisuType t) {
   x->x_visutype = t;
   for (unsigned i = 1, n = x->x_channels; i < n; ++i)
       inlet_new(&x->x_obj, &x->x_obj.ob_pd, gensym("signal"), gensym("signal"));
+  x->x_out_ready = outlet_new(&x->x_obj, gensym("bang"));
   x->x_remote.reset(new RemoteVisu);
   unix_socketpair(AF_UNIX, SOCK_DGRAM, 0, x->x_comm);
   if (socksetblocking(x->x_comm[1].get(), false) == -1)
@@ -68,6 +69,9 @@ t_int *visu_perform(t_int *w) {
   (void)sendok;
 #endif
 
+  if (x->x_ready.exchange(false))
+    outlet_bang(x->x_out_ready);
+
   return w;
 }
 
@@ -108,6 +112,7 @@ void t_visu::commander_thread_routine() {
       } else {
         std::string pgm = self_relative("visu~-gui");
         remote.start(pgm.c_str(), this->x_visutype, this->x_title.c_str());
+        this->x_ready.store(true);
       }
     }
   }
