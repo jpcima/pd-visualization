@@ -13,6 +13,7 @@ enum MessageTag {
   MessageTag_Toggle,
   MessageTag_Position,
   MessageTag_Size,
+  MessageTag_Border,
 };
 
 struct MessageHeader {

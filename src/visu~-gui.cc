@@ -181,6 +181,15 @@ static bool handle_message(const MessageHeader *msg) {
       break;
     }
 
+    case MessageTag_Border: {
+      if (msg->len != sizeof(int))
+        exit(1);
+
+      window->border(msg->i[0]);
+
+      break;
+    }
+
     case MessageTag_Frames: {
       const float *data = &msg->f[0];
       unsigned datalen = msg->len;

@@ -277,6 +277,15 @@ bool RemoteVisu::set_size(float w, float h)
   return P->send_message(msg);
 }
 
+bool RemoteVisu::set_border(bool b)
+{
+  MessageHeader *msg = P->msg.get();
+  msg->tag = MessageTag_Border;
+  msg->len = sizeof(int);
+  msg->i[0] = b;
+  return P->send_message(msg);
+}
+
 bool RemoteVisu::send_frames(
     float fs, const float *data[], unsigned nframes, unsigned nchannels) {
   MessageHeader *msg = P->msg.get();

@@ -86,6 +86,11 @@ void visu_size(t_visu *x, t_float w, t_float h) {
   remote.set_size(w, h);
 }
 
+void visu_border(t_visu *x, t_float b) {
+  RemoteVisu &remote = *x->x_remote;
+  remote.set_border(b != 0);
+}
+
 ///
 void t_visu::commander_thread_routine() {
   SOCKET fd = this->x_comm[0].get();
